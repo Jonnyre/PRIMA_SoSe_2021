@@ -5,10 +5,11 @@ var L02_SpaceInvader;
     class Projectile extends L02_SpaceInvader.SpaceInvaderObject {
         constructor(_name, _position) {
             super(_name, _position, new f.Vector2(0.1, 0.7), "white");
+            this.velocity = 10;
         }
         move() {
             let timeSinceLastFrame = f.Loop.timeFrameReal / 1000;
-            this.mtxLocal.translateY(timeSinceLastFrame * 10);
+            this.mtxLocal.translateY(timeSinceLastFrame * this.velocity);
         }
     }
     L02_SpaceInvader.Projectile = Projectile;

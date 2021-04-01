@@ -10,7 +10,7 @@ var L02_SpaceInvader;
     let crtSideways = new f.Control("PaddleControl", 0.2, 0 /* PROPORTIONAL */);
     crtSideways.setDelay(100);
     const xStartPosition = -8;
-    const yInvaderStart = 12;
+    const yInvaderStart = 11;
     function init(_event) {
         const canvas = document.querySelector("canvas");
         window.addEventListener("keydown", hndKeyDown);
@@ -18,7 +18,10 @@ var L02_SpaceInvader;
         createWalls();
         createInvaders();
         createCovers();
-        createProjectile();
+        projectiles = new f.Node("Projectiles");
+        root.addChild(projectiles);
+        let motherShip = new L02_SpaceInvader.MotherShip("MotherShip", new f.Vector2(3, 12.5));
+        root.addChild(motherShip);
         let cmpCamera = new f.ComponentCamera();
         cmpCamera.mtxPivot.translateZ(20);
         cmpCamera.mtxPivot.translateY(6);
@@ -61,12 +64,12 @@ var L02_SpaceInvader;
     }
     function createCovers() {
         let covers = new f.Node("covers");
-        let xPositionCover = xStartPosition + 0.5;
-        const yPositionCover = 2;
-        for (let i = 0; i < 4; i++) {
-            let cover = new L02_SpaceInvader.Cover("Cover" + i, new f.Vector2(xPositionCover, yPositionCover));
-            covers.addChild(cover);
+        let xPositionCover = xStartPosition;
+        const yPositionCover = 2.5;
+        for (let l = 0; l < 4; l++) {
+            let cover = new L02_SpaceInvader.Cover("cover" + l, new f.Vector2(xPositionCover, yPositionCover));
             xPositionCover += 5;
+            covers.addChild(cover);
         }
         root.addChild(covers);
     }
@@ -88,12 +91,6 @@ var L02_SpaceInvader;
             yPositionInvader -= invaderLineHeight;
         }
         root.addChild(invaders);
-    }
-    function createProjectile() {
-        projectiles = new f.Node("Projectiles");
-        let projectile = new L02_SpaceInvader.Projectile("projectile1", new f.Vector2(0, 4));
-        projectiles.addChild(projectile);
-        root.addChild(projectiles);
     }
 })(L02_SpaceInvader || (L02_SpaceInvader = {}));
 //# sourceMappingURL=Main.js.map

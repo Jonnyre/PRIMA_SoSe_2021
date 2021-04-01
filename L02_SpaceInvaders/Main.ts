@@ -13,7 +13,7 @@ namespace L02_SpaceInvader {
   crtSideways.setDelay(100);
 
   const xStartPosition: number = -8;
-  const yInvaderStart: number = 12;
+  const yInvaderStart: number = 11;
 
   function init(_event: Event): void {
     const canvas: HTMLCanvasElement = document.querySelector("canvas");
@@ -22,7 +22,10 @@ namespace L02_SpaceInvader {
     createWalls();
     createInvaders();
     createCovers();
-    createProjectile();
+    projectiles = new f.Node("Projectiles");
+    root.addChild(projectiles);
+    let motherShip: MotherShip = new MotherShip("MotherShip", new f.Vector2(3, 12.5));
+    root.addChild(motherShip);
 
     let cmpCamera: f.ComponentCamera = new f.ComponentCamera();
     cmpCamera.mtxPivot.translateZ(20);
@@ -46,7 +49,7 @@ namespace L02_SpaceInvader {
     for (let projectile of projectiles.getChildren() as Projectile[]) {
       projectile.move();
     }
-    
+
     character.mtxLocal.translateX(crtSideways.getOutput());
     viewport.draw();
   }
@@ -80,13 +83,13 @@ namespace L02_SpaceInvader {
 
   function createCovers(): void {
     let covers: f.Node = new f.Node("covers");
-    let xPositionCover: number = xStartPosition + 0.5;
-    const yPositionCover: number = 2;
-    for (let i: number = 0; i < 4; i++) {
-      let cover: Cover = new Cover("Cover" + i, new f.Vector2(xPositionCover, yPositionCover));
-
-      covers.addChild(cover);
+    let xPositionCover: number = xStartPosition;
+    const yPositionCover: number = 2.5;
+    
+    for (let l: number = 0; l < 4; l++) {
+      let cover: Cover = new Cover("cover" + l, new f.Vector2(xPositionCover, yPositionCover));
       xPositionCover += 5;
+      covers.addChild(cover);
     }
 
     root.addChild(covers);
@@ -112,12 +115,5 @@ namespace L02_SpaceInvader {
       yPositionInvader -= invaderLineHeight;
     }
     root.addChild(invaders);
-  }
-
-  function createProjectile(): void {
-    projectiles = new f.Node("Projectiles");
-    let projectile: Projectile = new Projectile("projectile1", new f.Vector2(0, 4));
-    projectiles.addChild(projectile);
-    root.addChild(projectiles);
   }
 }
