@@ -13,7 +13,7 @@ namespace L02_SpaceInvader {
       let stripePosition: f.Vector2 = new f.Vector2(_position.x, _position.y);
       for (let i: number = 0; i < 5; i++) {
         for (let j: number = 0; j < 5; j++) {
-          let stripe: SpaceInvaderObject = new SpaceInvaderObject("stripe" + i * 5 + j, new f.Vector2(stripePosition.x, stripePosition.y), this.stripeSize, "white");
+          let stripe: SpaceInvaderObject = new SpaceInvaderObject("stripe" + i * 5 + j, new f.Vector2(stripePosition.x, stripePosition.y), this.stripeSize);
           this.addChild(stripe);
           stripePosition.x += this.xPosStripe;
         }

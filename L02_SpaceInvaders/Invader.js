@@ -3,7 +3,7 @@ var L02_SpaceInvader;
 (function (L02_SpaceInvader) {
     class Invader extends L02_SpaceInvader.SpaceInvaderObject {
         constructor(_name, _position, _size) {
-            super(_name, _position, _size, "white");
+            super(_name, _position, _size, "invader");
         }
     }
     L02_SpaceInvader.Invader = Invader;

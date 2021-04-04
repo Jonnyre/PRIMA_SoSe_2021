@@ -4,12 +4,13 @@ namespace L02_SpaceInvader {
   export class Projectile extends SpaceInvaderObject {
     private velocity: number = 10;
     constructor(_name: string, _position: f.Vector2) {
-      super(_name, _position, new f.Vector2(0.1, 0.7), "white");
+      super(_name, _position, new f.Vector2(0.1, 0.7));
     }
 
     public move(): void {
       let timeSinceLastFrame: number = f.Loop.timeFrameReal / 1000;
       this.mtxLocal.translateY(timeSinceLastFrame * this.velocity);
+      this.rect.position.y = this.mtxLocal.translation.y - this.rect.size.y / 2;
     }
   }
 }
