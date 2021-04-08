@@ -10,7 +10,6 @@ var L02_SpaceInvader;
     let covers;
     let invaders;
     let walls;
-    let crtSideways = new f.Control("ControlCharacter", 0.2, 0 /* PROPORTIONAL */);
     let attackCooldownCounter = 0;
     const xStartPosition = -8;
     const yInvaderStart = 11;
@@ -47,13 +46,41 @@ var L02_SpaceInvader;
     function moveCharacter() {
         let oldCharacterPos = character.mtxLocal.translation;
         let oldCharacterRectX = character.rect.position.x;
-        crtSideways.setInput(f.Keyboard.mapToValue(-1, 0, [f.KEYBOARD_CODE.A, f.KEYBOARD_CODE.ARROW_LEFT,])
-            + f.Keyboard.mapToValue(1, 0, [f.KEYBOARD_CODE.D, f.KEYBOARD_CODE.ARROW_RIGHT,]));
-        character.mtxLocal.translateX(crtSideways.getOutput());
-        character.rect.position.x = character.mtxLocal.translation.x - character.rect.size.x / 2;
-        if (character.checkCollision(walls.getChildrenByName("wallLeft")[0]) || character.checkCollision(walls.getChildrenByName("wallRight")[0])) {
+        let offset = (character.speed * f.Loop.timeFrameReal) / 1000;
+        if (f.Keyboard.isPressedOne([f.KEYBOARD_CODE.A, f.KEYBOARD_CODE.ARROW_LEFT])) {
+            character.mtxLocal.translateX(-offset);
+            character.setRectPosition();
+        }
+        if (f.Keyboard.isPressedOne([f.KEYBOARD_CODE.D, f.KEYBOARD_CODE.ARROW_RIGHT])) {
+            character.mtxLocal.translateX(+offset);
+            character.setRectPosition();
+        }
+        if (character.checkCollision(walls.getChildrenByName("wallLeft")[0]) ||
+            character.checkCollision(walls.getChildrenByName("wallRight")[0])) {
             character.mtxLocal.translation = oldCharacterPos;
             character.rect.position.x = oldCharacterRectX;
+        }
+    }
+    function checkProjectileCollision() {
+        for (let projectile of projectiles.getChildren()) {
+            for (let cover of covers.getChildren()) {
+                for (let stripe of cover.getChildren()) {
+                    if (projectile.checkCollision(stripe)) {
+                        projectiles.removeChild(projectile);
+                        cover.removeChild(stripe);
+                    }
+                }
+            }
+            for (let invader of invaders.getChildren()) {
+                if (projectile.checkCollision(invader)) {
+                    projectiles.removeChild(projectile);
+                    invaders.removeChild(invader);
+                }
+            }
+            if (projectile.checkCollision(walls.getChildrenByName("wallTop")[0]) ||
+                projectile.checkCollision(walls.getChildrenByName("wallBottom")[0])) {
+                projectiles.removeChild(projectile);
+            }
         }
     }
     function hndKeyDown(_event) {
@@ -114,27 +141,6 @@ var L02_SpaceInvader;
             yPositionInvader -= invaderLineHeight;
         }
         root.addChild(invaders);
-    }
-    function checkProjectileCollision() {
-        for (let projectile of projectiles.getChildren()) {
-            for (let cover of covers.getChildren()) {
-                for (let stripe of cover.getChildren()) {
-                    if (projectile.checkCollision(stripe)) {
-                        projectiles.removeChild(projectile);
-                        cover.removeChild(stripe);
-                    }
-                }
-            }
-            for (let invader of invaders.getChildren()) {
-                if (projectile.checkCollision(invader)) {
-                    projectiles.removeChild(projectile);
-                    invaders.removeChild(invader);
-                }
-            }
-            if (projectile.checkCollision(walls.getChildrenByName("wallTop")[0]) || projectile.checkCollision(walls.getChildrenByName("wallBottom")[0])) {
-                projectiles.removeChild(projectile);
-            }
-        }
     }
 })(L02_SpaceInvader || (L02_SpaceInvader = {}));
 //# sourceMappingURL=Main.js.map

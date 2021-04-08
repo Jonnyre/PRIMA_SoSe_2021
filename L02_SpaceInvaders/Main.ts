@@ -12,8 +12,6 @@ namespace L02_SpaceInvader {
   let invaders: f.Node;
   let walls: f.Node;
 
-  let crtSideways: f.Control = new f.Control("ControlCharacter", 0.2, f.CONTROL_TYPE.PROPORTIONAL);
-
   let attackCooldownCounter: number = 0;
 
   const xStartPosition: number = -8;
@@ -52,7 +50,7 @@ namespace L02_SpaceInvader {
 
     checkProjectileCollision();
 
-    for (let projectile of projectiles.getChildren() as Projectile[]) { 
+    for (let projectile of projectiles.getChildren() as Projectile[]) {
       projectile.move();
     }
 
@@ -62,18 +60,53 @@ namespace L02_SpaceInvader {
   function moveCharacter(): void {
     let oldCharacterPos: f.Vector3 = character.mtxLocal.translation;
     let oldCharacterRectX: number = character.rect.position.x;
-    crtSideways.setInput(
-      f.Keyboard.mapToValue(-1, 0, [f.KEYBOARD_CODE.A,f.KEYBOARD_CODE.ARROW_LEFT,])
-     + f.Keyboard.mapToValue(1, 0, [f.KEYBOARD_CODE.D,f.KEYBOARD_CODE.ARROW_RIGHT,]));
-    character.mtxLocal.translateX(crtSideways.getOutput());
-    character.rect.position.x = character.mtxLocal.translation.x - character.rect.size.x / 2;
 
-    if(character.checkCollision(<SpaceInvaderObject>walls.getChildrenByName("wallLeft")[0]) || character.checkCollision(<SpaceInvaderObject>walls.getChildrenByName("wallRight")[0])) {
+    let offset: number = (character.speed * f.Loop.timeFrameReal) / 1000;
+
+    if (f.Keyboard.isPressedOne([f.KEYBOARD_CODE.A, f.KEYBOARD_CODE.ARROW_LEFT])) {
+      character.mtxLocal.translateX(-offset);
+      character.setRectPosition();
+    }
+      
+
+    if (f.Keyboard.isPressedOne([f.KEYBOARD_CODE.D, f.KEYBOARD_CODE.ARROW_RIGHT])) {
+      character.mtxLocal.translateX(+offset);
+      character.setRectPosition();
+    }
+      
+
+    if (character.checkCollision(<SpaceInvaderObject>walls.getChildrenByName("wallLeft")[0]) ||
+       character.checkCollision(<SpaceInvaderObject>walls.getChildrenByName("wallRight")[0])) {
       character.mtxLocal.translation = oldCharacterPos;
       character.rect.position.x = oldCharacterRectX;
     }
   }
 
+  function checkProjectileCollision(): void {
+    for (let projectile of projectiles.getChildren() as Projectile[]) {
+      for (let cover of covers.getChildren() as Cover[]) {
+        for (let stripe of cover.getChildren() as SpaceInvaderObject[]) {
+          if (projectile.checkCollision(stripe)) {
+            projectiles.removeChild(projectile);
+            cover.removeChild(stripe);
+          }
+        }
+      }
+
+      for (let invader of invaders.getChildren() as Invader[]) {
+        if (projectile.checkCollision(invader)) {
+          projectiles.removeChild(projectile);
+          invaders.removeChild(invader);
+        }
+      }
+
+      if (projectile.checkCollision(<SpaceInvaderObject>walls.getChildrenByName("wallTop")[0]) ||
+        projectile.checkCollision(<SpaceInvaderObject>walls.getChildrenByName("wallBottom")[0])) {
+        projectiles.removeChild(projectile);
+      }
+    }
+  }
+  
   function hndKeyDown(_event: KeyboardEvent): void {
     if (_event.code === "Space") {
       if (attackCooldownCounter > character.attackCoolDownSeconds) {
@@ -142,29 +175,5 @@ namespace L02_SpaceInvader {
       yPositionInvader -= invaderLineHeight;
     }
     root.addChild(invaders);
-  }
-
-  function checkProjectileCollision(): void {
-    for (let projectile of projectiles.getChildren() as Projectile[]) {
-      for (let cover of covers.getChildren() as Cover[]) {
-        for(let stripe of cover.getChildren() as SpaceInvaderObject[]) {
-          if(projectile.checkCollision(stripe)) {
-            projectiles.removeChild(projectile);
-            cover.removeChild(stripe);
-          }
-        }
-      }
-
-      for (let invader of invaders.getChildren() as Invader[]) {
-        if (projectile.checkCollision(invader)) {
-          projectiles.removeChild(projectile);
-          invaders.removeChild(invader);
-        }
-      }
-
-      if(projectile.checkCollision(<SpaceInvaderObject>walls.getChildrenByName("wallTop")[0]) || projectile.checkCollision(<SpaceInvaderObject>walls.getChildrenByName("wallBottom")[0])) {
-        projectiles.removeChild(projectile);
-      }
-    }
   }
 }

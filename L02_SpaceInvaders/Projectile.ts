@@ -10,7 +10,7 @@ namespace L02_SpaceInvader {
     public move(): void {
       let timeSinceLastFrame: number = f.Loop.timeFrameReal / 1000;
       this.mtxLocal.translateY(timeSinceLastFrame * this.velocity);
-      this.rect.position.y = this.mtxLocal.translation.y - this.rect.size.y / 2;
+      this.setRectPosition();
     }
   }
 }

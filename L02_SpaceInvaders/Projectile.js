@@ -10,7 +10,7 @@ var L02_SpaceInvader;
         move() {
             let timeSinceLastFrame = f.Loop.timeFrameReal / 1000;
             this.mtxLocal.translateY(timeSinceLastFrame * this.velocity);
-            this.rect.position.y = this.mtxLocal.translation.y - this.rect.size.y / 2;
+            this.setRectPosition();
         }
     }
     L02_SpaceInvader.Projectile = Projectile;

@@ -3,7 +3,7 @@ namespace L02_SpaceInvader {
 
   export class SpaceInvaderObject extends f.Node {
       private static meshQuad: f.MeshQuad = new f.MeshQuad();
-      private static material: f.Material = new f.Material("White", f.ShaderUniColor, new f.CoatColored());
+      private static mtrWhite: f.Material = new f.Material("White", f.ShaderUniColor, new f.CoatColored());
       private static textureInvader: f.TextureImage = new f.TextureImage("./Assets/invader.png");
       private static mtrInvader: f.Material = new f.Material("Invader", f.ShaderTexture, new f.CoatTextured(f.Color.CSS("White"), SpaceInvaderObject.textureInvader));
 
@@ -19,17 +19,17 @@ namespace L02_SpaceInvader {
           if (_texture === "invader") {
             this.addComponent(new f.ComponentMaterial(SpaceInvaderObject.mtrInvader));
           } else {
-            this.addComponent(new f.ComponentMaterial(SpaceInvaderObject.material));
+            this.addComponent(new f.ComponentMaterial(SpaceInvaderObject.mtrWhite));
           }
       }
 
       public checkCollision(_target: SpaceInvaderObject): boolean {
-        let intersection: f.Rectangle = this.rect.getIntersection(_target.rect);
-  
-        if (intersection == null) {
-          return false;
-        }
-        return true;
+        return this.rect.collides(_target.rect);
+      }
+
+      public setRectPosition(): void {
+        this.rect.position.x = this.mtxLocal.translation.x - this.rect.size.x / 2;
+        this.rect.position.y = this.mtxLocal.translation.y - this.rect.size.y / 2;
       }
   }
 }

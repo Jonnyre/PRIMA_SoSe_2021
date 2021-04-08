@@ -14,19 +14,19 @@ var L02_SpaceInvader;
                 this.addComponent(new f.ComponentMaterial(SpaceInvaderObject.mtrInvader));
             }
             else {
-                this.addComponent(new f.ComponentMaterial(SpaceInvaderObject.material));
+                this.addComponent(new f.ComponentMaterial(SpaceInvaderObject.mtrWhite));
             }
         }
         checkCollision(_target) {
-            let intersection = this.rect.getIntersection(_target.rect);
-            if (intersection == null) {
-                return false;
-            }
-            return true;
+            return this.rect.collides(_target.rect);
+        }
+        setRectPosition() {
+            this.rect.position.x = this.mtxLocal.translation.x - this.rect.size.x / 2;
+            this.rect.position.y = this.mtxLocal.translation.y - this.rect.size.y / 2;
         }
     }
     SpaceInvaderObject.meshQuad = new f.MeshQuad();
-    SpaceInvaderObject.material = new f.Material("White", f.ShaderUniColor, new f.CoatColored());
+    SpaceInvaderObject.mtrWhite = new f.Material("White", f.ShaderUniColor, new f.CoatColored());
     SpaceInvaderObject.textureInvader = new f.TextureImage("./Assets/invader.png");
     SpaceInvaderObject.mtrInvader = new f.Material("Invader", f.ShaderTexture, new f.CoatTextured(f.Color.CSS("White"), SpaceInvaderObject.textureInvader));
     L02_SpaceInvader.SpaceInvaderObject = SpaceInvaderObject;
