@@ -12,15 +12,21 @@ namespace L02_SpaceInvader {
   let invaders: f.Node;
   let walls: f.Node;
 
-  let attackCooldownCounter: number = 0;
-
   const xStartPosition: number = -8;
   const yInvaderStart: number = 11;
   const projectileOffset: number = 1;
+  const invaderLineHeight: number = 1;
+  const invaderSpeedGain: number = 0.05;
 
-  function init(_event: Event): void {
+  let velocity: number = 0.25;
+  let attackCooldownCounter: number = 0;
+  let gameOver: boolean = false;
+
+  function init(): void {
     const canvas: HTMLCanvasElement = document.querySelector("canvas");
     window.addEventListener("keydown", hndKeyDown);
+    let restartButton: HTMLButtonElement = <HTMLButtonElement>document.getElementById("restart");
+    restartButton.addEventListener("click", hndClick);
     createCharacter();
     createWalls();
     createInvaders();
@@ -44,6 +50,9 @@ namespace L02_SpaceInvader {
   }
 
   function update(_event: Event): void {
+    if (gameOver) {
+      return;
+    }
     moveCharacter();
 
     attackCooldownCounter += f.Loop.timeFrameGame / 1000;
@@ -54,9 +63,30 @@ namespace L02_SpaceInvader {
       projectile.move();
     }
 
+    let xTranslateInvadersOnColision = 0.1;
+    for (let invader of invaders.getChildren() as Invader[]) {
+      if (invader.checkCollision(<SpaceInvaderObject>walls.getChildrenByName("wallRight")[0])) {
+        moveInvadersOnCollision(-xTranslateInvadersOnColision)
+      }
+
+      if (invader.checkCollision(<SpaceInvaderObject>walls.getChildrenByName("wallLeft")[0])) {
+          moveInvadersOnCollision(xTranslateInvadersOnColision)
+      }
+
+      invader.move(velocity);
+      invader.setRectPosition();
+    }
     viewport.draw();
   }
 
+  function moveInvadersOnCollision(_xTranslateInvadersOnColision: number): void {
+    velocity = -1 * velocity;
+    for (let invaderInner of invaders.getChildren() as Invader[]) {
+      invaderInner.mtxLocal.translateX(_xTranslateInvadersOnColision);
+      invaderInner.mtxLocal.translateY(-invaderLineHeight);
+      invaderInner.setRectPosition();
+    }
+  }
   function moveCharacter(): void {
     let oldCharacterPos: f.Vector3 = character.mtxLocal.translation;
     let oldCharacterRectX: number = character.rect.position.x;
@@ -97,6 +127,13 @@ namespace L02_SpaceInvader {
         if (projectile.checkCollision(invader)) {
           projectiles.removeChild(projectile);
           invaders.removeChild(invader);
+          if(invaders.nChildren === 0)
+            gameOver = true;
+          
+          if(Math.sign(velocity) === 1)
+            velocity += invaderSpeedGain;
+          else
+            velocity = -1 * (Math.abs(velocity) + invaderSpeedGain);
         }
       }
 
@@ -160,9 +197,8 @@ namespace L02_SpaceInvader {
 
     let xPositionInvader: number = xStartPosition;
     let yPositionInvader: number = yInvaderStart;
-    const invaderLineHeight: number = 1.2;
     const invaderSpaceWidth: number = 1.2;
-    const countOfInvadersInRow: number = 14;
+    const countOfInvadersInRow: number = 10;
     const countInvaderRows: number = 4;
 
     for (let i: number = 0; i < countInvaderRows; i++) {
@@ -175,5 +211,18 @@ namespace L02_SpaceInvader {
       yPositionInvader -= invaderLineHeight;
     }
     root.addChild(invaders);
+  }
+
+  function hndClick(): void {
+    gameOver = false;
+    velocity = 0.25;
+    root.removeChild(invaders);
+    root.removeChild(covers);
+    root.removeChild(projectiles);
+    projectiles = new f.Node("Projectiles");
+    root.addChild(projectiles);
+    createInvaders();
+
+    createCovers();
   }
 }
