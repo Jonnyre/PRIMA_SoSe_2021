@@ -3,7 +3,7 @@ namespace L02_SpaceInvader {
 
   window.addEventListener("load", init);
 
-  let root: f.Node = new f.Node("root");
+  let root: f.Node;
   let viewport: f.Viewport = new f.Viewport();
 
   let character: Character;
@@ -16,15 +16,22 @@ namespace L02_SpaceInvader {
   const yInvaderStart: number = 11;
   const projectileOffset: number = 1;
   const invaderLineHeight: number = 1;
-  const invaderSpeedGain: number = 0.05;
+  const invaderSpeedGain: number = 0.1;
 
-  let velocity: number = 0.25;
-  let attackCooldownCounter: number = 0;
+  let velocity: number;
   let gameOver: boolean = false;
+  let gunReady: boolean = true;
+  let characterLife: number;
+  let enemyShootChancePercentage: number;
 
+  let gameOverDiv: HTMLDivElement;
   function init(): void {
+    root = new f.Node("root");
+    gameOverDiv = <HTMLDivElement>document.getElementById("gameOver");
+    velocity = 10;
+    characterLife = 3;
+    enemyShootChancePercentage = 1;
     const canvas: HTMLCanvasElement = document.querySelector("canvas");
-    window.addEventListener("keydown", hndKeyDown);
     let restartButton: HTMLButtonElement = <HTMLButtonElement>document.getElementById("restart");
     restartButton.addEventListener("click", hndClick);
     createCharacter();
@@ -36,6 +43,8 @@ namespace L02_SpaceInvader {
     let motherShip: MotherShip = new MotherShip("MotherShip", new f.Vector2(3, 12.25));
     root.addChild(motherShip);
 
+    f.Time.game.setTimer(300, 0, moveInvaders);
+    f.Time.game.setTimer(300, 0, invaderShoot);
     let cmpCamera: f.ComponentCamera = new f.ComponentCamera();
     cmpCamera.mtxPivot.translateZ(20);
     cmpCamera.mtxPivot.translateY(6);
@@ -53,30 +62,48 @@ namespace L02_SpaceInvader {
     if (gameOver) {
       return;
     }
+
     moveCharacter();
 
-    attackCooldownCounter += f.Loop.timeFrameGame / 1000;
-
+    if (gunReady && f.Keyboard.isPressedOne([f.KEYBOARD_CODE.SPACE])) {
+      shootProjectile();
+    }
     checkProjectileCollision();
 
     for (let projectile of projectiles.getChildren() as Projectile[]) {
       projectile.move();
     }
-
-    let xTranslateInvadersOnColision = 0.1;
-    for (let invader of invaders.getChildren() as Invader[]) {
-      if (invader.checkCollision(<SpaceInvaderObject>walls.getChildrenByName("wallRight")[0])) {
-        moveInvadersOnCollision(-xTranslateInvadersOnColision)
-      }
-
-      if (invader.checkCollision(<SpaceInvaderObject>walls.getChildrenByName("wallLeft")[0])) {
-          moveInvadersOnCollision(xTranslateInvadersOnColision)
-      }
-
-      invader.move(velocity);
-      invader.setRectPosition();
-    }
     viewport.draw();
+  }
+
+  function invaderShoot(): void {
+    for (let invader of invaders.getChildren() as Invader[]) {
+      let otherInvaderBelow: boolean = false;
+      if(Math.random() < enemyShootChancePercentage / 100) {
+        for (let invaderSecond of invaders.getChildren() as Invader[]) {
+          if(invaderSecond == invader) {
+            continue;
+          }
+
+        if(invader.rectBelow.collides(invaderSecond.rect)) {
+          otherInvaderBelow = true
+        }
+      }
+      if(!otherInvaderBelow) {
+        let projectile: Projectile = new Projectile("Projectile", new f.Vector2(invader.mtxLocal.translation.x, invader.mtxLocal.translation.y), true);
+        projectiles.addChild(projectile);
+      }
+    }
+  }
+}
+
+  function shootProjectile(): void {
+      const projectileStartX = character.getChild(0).mtxWorld.translation.x;
+      const projectileStartY = character.getChild(0).mtxWorld.translation.y + projectileOffset;
+      let projectile: Projectile = new Projectile("Projectile", new f.Vector2(projectileStartX, projectileStartY), false);
+      projectiles.addChild(projectile);
+      gunReady = false;
+      f.Time.game.setTimer(1000, 1, () => gunReady = true);
   }
 
   function moveInvadersOnCollision(_xTranslateInvadersOnColision: number): void {
@@ -87,6 +114,7 @@ namespace L02_SpaceInvader {
       invaderInner.setRectPosition();
     }
   }
+
   function moveCharacter(): void {
     let oldCharacterPos: f.Vector3 = character.mtxLocal.translation;
     let oldCharacterRectX: number = character.rect.position.x;
@@ -123,45 +151,42 @@ namespace L02_SpaceInvader {
         }
       }
 
-      for (let invader of invaders.getChildren() as Invader[]) {
-        if (projectile.checkCollision(invader)) {
+      if(!projectile.fromInvader) {
+        for (let invader of invaders.getChildren() as Invader[]) {
+          if (projectile.checkCollision(invader)) {
+            projectiles.removeChild(projectile);
+            invaders.removeChild(invader);
+            enemyShootChancePercentage += 0.1;
+            if(invaders.nChildren === 0)
+              doGameOver();
+            
+            if(Math.sign(velocity) === 1)
+              velocity += invaderSpeedGain;
+            else
+              velocity = -1 * (Math.abs(velocity) + invaderSpeedGain);
+          }
+        }
+      } else {
+        if(projectile.checkCollision(character)) {
           projectiles.removeChild(projectile);
-          invaders.removeChild(invader);
-          if(invaders.nChildren === 0)
-            gameOver = true;
-          
-          if(Math.sign(velocity) === 1)
-            velocity += invaderSpeedGain;
-          else
-            velocity = -1 * (Math.abs(velocity) + invaderSpeedGain);
+          characterLife--;
+          if(characterLife === 0) {
+            doGameOver();
+          }
         }
       }
-
+      
+    
       if (projectile.checkCollision(<SpaceInvaderObject>walls.getChildrenByName("wallTop")[0]) ||
         projectile.checkCollision(<SpaceInvaderObject>walls.getChildrenByName("wallBottom")[0])) {
         projectiles.removeChild(projectile);
       }
     }
   }
-  
-  function hndKeyDown(_event: KeyboardEvent): void {
-    if (_event.code === "Space") {
-      if (attackCooldownCounter > character.attackCoolDownSeconds) {
-        const projectileStartX = character.getChild(0).mtxWorld.translation.x;
-        const projectileStartY = character.getChild(0).mtxWorld.translation.y + projectileOffset;
-        let projectile: Projectile = new Projectile("Projectile", new f.Vector2(projectileStartX, projectileStartY));
-        projectiles.addChild(projectile);
-        attackCooldownCounter = 0;
-      }
-    }
-  }
 
   function createCharacter(): void {
-    let characterNode: f.Node = new f.Node("Character");
     character = new Character("character", new f.Vector2(0, 0));
-
-    characterNode.addChild(character);
-    root.addChild(characterNode);
+    root.addChild(character);
   }
 
   function createWalls(): void {
@@ -194,7 +219,6 @@ namespace L02_SpaceInvader {
 
   function createInvaders(): void {
     invaders = new f.Node("Invaders");
-
     let xPositionInvader: number = xStartPosition;
     let yPositionInvader: number = yInvaderStart;
     const invaderSpaceWidth: number = 1.2;
@@ -215,14 +239,28 @@ namespace L02_SpaceInvader {
 
   function hndClick(): void {
     gameOver = false;
-    velocity = 0.25;
-    root.removeChild(invaders);
-    root.removeChild(covers);
-    root.removeChild(projectiles);
-    projectiles = new f.Node("Projectiles");
-    root.addChild(projectiles);
-    createInvaders();
+    gameOverDiv.style.display = "none";
+    init();
+  }
 
-    createCovers();
+  function moveInvaders(): void {
+    let xTranslateInvadersOnColision = 0.5;
+    for (let invader of invaders.getChildren() as Invader[]) {
+      if (invader.checkCollision(<SpaceInvaderObject>walls.getChildrenByName("wallRight")[0])) {
+        moveInvadersOnCollision(-xTranslateInvadersOnColision)
+      }
+
+      if (invader.checkCollision(<SpaceInvaderObject>walls.getChildrenByName("wallLeft")[0])) {
+          moveInvadersOnCollision(xTranslateInvadersOnColision)
+      }
+
+      invader.move(velocity);
+      invader.setRectPosition();
+    }
+  }
+
+  function doGameOver(): void {
+    gameOver = true;
+    gameOverDiv.style.display = "block";
   }
 }

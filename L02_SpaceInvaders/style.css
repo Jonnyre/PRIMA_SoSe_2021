@@ -1,0 +1,10 @@
+#gameOver {
+  position: absolute;
+  left: 70%;
+  width: 100px;
+  height: 100px;
+  background-image: url("Assets/gameover.webp");
+  background-size: 100px;
+  background-repeat: no-repeat;
+  display: none;
+}

@@ -3,7 +3,7 @@ var L02_SpaceInvader;
 (function (L02_SpaceInvader) {
     var f = FudgeCore;
     window.addEventListener("load", init);
-    let root = new f.Node("root");
+    let root;
     let viewport = new f.Viewport();
     let character;
     let projectiles;
@@ -14,13 +14,20 @@ var L02_SpaceInvader;
     const yInvaderStart = 11;
     const projectileOffset = 1;
     const invaderLineHeight = 1;
-    const invaderSpeedGain = 0.05;
-    let velocity = 0.25;
-    let attackCooldownCounter = 0;
+    const invaderSpeedGain = 0.1;
+    let velocity;
     let gameOver = false;
+    let gunReady = true;
+    let characterLife;
+    let enemyShootChancePercentage;
+    let gameOverDiv;
     function init() {
+        root = new f.Node("root");
+        gameOverDiv = document.getElementById("gameOver");
+        velocity = 10;
+        characterLife = 3;
+        enemyShootChancePercentage = 1;
         const canvas = document.querySelector("canvas");
-        window.addEventListener("keydown", hndKeyDown);
         let restartButton = document.getElementById("restart");
         restartButton.addEventListener("click", hndClick);
         createCharacter();
@@ -31,6 +38,8 @@ var L02_SpaceInvader;
         root.addChild(projectiles);
         let motherShip = new L02_SpaceInvader.MotherShip("MotherShip", new f.Vector2(3, 12.25));
         root.addChild(motherShip);
+        f.Time.game.setTimer(300, 0, moveInvaders);
+        f.Time.game.setTimer(300, 0, invaderShoot);
         let cmpCamera = new f.ComponentCamera();
         cmpCamera.mtxPivot.translateZ(20);
         cmpCamera.mtxPivot.translateY(6);
@@ -45,23 +54,41 @@ var L02_SpaceInvader;
             return;
         }
         moveCharacter();
-        attackCooldownCounter += f.Loop.timeFrameGame / 1000;
+        if (gunReady && f.Keyboard.isPressedOne([f.KEYBOARD_CODE.SPACE])) {
+            shootProjectile();
+        }
         checkProjectileCollision();
         for (let projectile of projectiles.getChildren()) {
             projectile.move();
         }
-        let xTranslateInvadersOnColision = 0.1;
-        for (let invader of invaders.getChildren()) {
-            if (invader.checkCollision(walls.getChildrenByName("wallRight")[0])) {
-                moveInvadersOnCollision(-xTranslateInvadersOnColision);
-            }
-            if (invader.checkCollision(walls.getChildrenByName("wallLeft")[0])) {
-                moveInvadersOnCollision(xTranslateInvadersOnColision);
-            }
-            invader.move(velocity);
-            invader.setRectPosition();
-        }
         viewport.draw();
+    }
+    function invaderShoot() {
+        for (let invader of invaders.getChildren()) {
+            let otherInvaderBelow = false;
+            if (Math.random() < enemyShootChancePercentage / 100) {
+                for (let invaderSecond of invaders.getChildren()) {
+                    if (invaderSecond == invader) {
+                        continue;
+                    }
+                    if (invader.rectBelow.collides(invaderSecond.rect)) {
+                        otherInvaderBelow = true;
+                    }
+                }
+                if (!otherInvaderBelow) {
+                    let projectile = new L02_SpaceInvader.Projectile("Projectile", new f.Vector2(invader.mtxLocal.translation.x, invader.mtxLocal.translation.y), true);
+                    projectiles.addChild(projectile);
+                }
+            }
+        }
+    }
+    function shootProjectile() {
+        const projectileStartX = character.getChild(0).mtxWorld.translation.x;
+        const projectileStartY = character.getChild(0).mtxWorld.translation.y + projectileOffset;
+        let projectile = new L02_SpaceInvader.Projectile("Projectile", new f.Vector2(projectileStartX, projectileStartY), false);
+        projectiles.addChild(projectile);
+        gunReady = false;
+        f.Time.game.setTimer(1000, 1, () => gunReady = true);
     }
     function moveInvadersOnCollision(_xTranslateInvadersOnColision) {
         velocity = -1 * velocity;
@@ -99,16 +126,28 @@ var L02_SpaceInvader;
                     }
                 }
             }
-            for (let invader of invaders.getChildren()) {
-                if (projectile.checkCollision(invader)) {
+            if (!projectile.fromInvader) {
+                for (let invader of invaders.getChildren()) {
+                    if (projectile.checkCollision(invader)) {
+                        projectiles.removeChild(projectile);
+                        invaders.removeChild(invader);
+                        enemyShootChancePercentage += 0.1;
+                        if (invaders.nChildren === 0)
+                            doGameOver();
+                        if (Math.sign(velocity) === 1)
+                            velocity += invaderSpeedGain;
+                        else
+                            velocity = -1 * (Math.abs(velocity) + invaderSpeedGain);
+                    }
+                }
+            }
+            else {
+                if (projectile.checkCollision(character)) {
                     projectiles.removeChild(projectile);
-                    invaders.removeChild(invader);
-                    if (invaders.nChildren === 0)
-                        gameOver = true;
-                    if (Math.sign(velocity) === 1)
-                        velocity += invaderSpeedGain;
-                    else
-                        velocity = -1 * (Math.abs(velocity) + invaderSpeedGain);
+                    characterLife--;
+                    if (characterLife === 0) {
+                        doGameOver();
+                    }
                 }
             }
             if (projectile.checkCollision(walls.getChildrenByName("wallTop")[0]) ||
@@ -117,22 +156,9 @@ var L02_SpaceInvader;
             }
         }
     }
-    function hndKeyDown(_event) {
-        if (_event.code === "Space") {
-            if (attackCooldownCounter > character.attackCoolDownSeconds) {
-                const projectileStartX = character.getChild(0).mtxWorld.translation.x;
-                const projectileStartY = character.getChild(0).mtxWorld.translation.y + projectileOffset;
-                let projectile = new L02_SpaceInvader.Projectile("Projectile", new f.Vector2(projectileStartX, projectileStartY));
-                projectiles.addChild(projectile);
-                attackCooldownCounter = 0;
-            }
-        }
-    }
     function createCharacter() {
-        let characterNode = new f.Node("Character");
         character = new L02_SpaceInvader.Character("character", new f.Vector2(0, 0));
-        characterNode.addChild(character);
-        root.addChild(characterNode);
+        root.addChild(character);
     }
     function createWalls() {
         walls = new f.Node("walls");
@@ -177,14 +203,25 @@ var L02_SpaceInvader;
     }
     function hndClick() {
         gameOver = false;
-        velocity = 0.25;
-        root.removeChild(invaders);
-        root.removeChild(covers);
-        root.removeChild(projectiles);
-        projectiles = new f.Node("Projectiles");
-        root.addChild(projectiles);
-        createInvaders();
-        createCovers();
+        gameOverDiv.style.display = "none";
+        init();
+    }
+    function moveInvaders() {
+        let xTranslateInvadersOnColision = 0.5;
+        for (let invader of invaders.getChildren()) {
+            if (invader.checkCollision(walls.getChildrenByName("wallRight")[0])) {
+                moveInvadersOnCollision(-xTranslateInvadersOnColision);
+            }
+            if (invader.checkCollision(walls.getChildrenByName("wallLeft")[0])) {
+                moveInvadersOnCollision(xTranslateInvadersOnColision);
+            }
+            invader.move(velocity);
+            invader.setRectPosition();
+        }
+    }
+    function doGameOver() {
+        gameOver = true;
+        gameOverDiv.style.display = "block";
     }
 })(L02_SpaceInvader || (L02_SpaceInvader = {}));
 //# sourceMappingURL=Main.js.map

@@ -5,6 +5,7 @@ var L02_SpaceInvader;
     class Invader extends L02_SpaceInvader.SpaceInvaderObject {
         constructor(_name, _position, _size) {
             super(_name, _position, _size, "invader");
+            this.rectBelow = this.rect;
         }
         move(_velocity) {
             let timeSinceLastFrame = f.Loop.timeFrameReal / 1000;
