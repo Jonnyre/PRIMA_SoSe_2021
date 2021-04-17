@@ -13,6 +13,9 @@ var L02_SpaceInvader;
             if (_texture === "invader") {
                 this.addComponent(new f.ComponentMaterial(SpaceInvaderObject.mtrInvader));
             }
+            else if (_texture === "mothership") {
+                this.addComponent(new f.ComponentMaterial(SpaceInvaderObject.mtrMotherShip));
+            }
             else {
                 this.addComponent(new f.ComponentMaterial(SpaceInvaderObject.mtrWhite));
             }
@@ -29,6 +32,8 @@ var L02_SpaceInvader;
     SpaceInvaderObject.mtrWhite = new f.Material("White", f.ShaderUniColor, new f.CoatColored());
     SpaceInvaderObject.textureInvader = new f.TextureImage("./Assets/invader.png");
     SpaceInvaderObject.mtrInvader = new f.Material("Invader", f.ShaderTexture, new f.CoatTextured(f.Color.CSS("White"), SpaceInvaderObject.textureInvader));
+    SpaceInvaderObject.textureMotherShip = new f.TextureImage("./Assets/mothership.png");
+    SpaceInvaderObject.mtrMotherShip = new f.Material("MotherShip", f.ShaderTexture, new f.CoatTextured(f.Color.CSS("White"), SpaceInvaderObject.textureMotherShip));
     L02_SpaceInvader.SpaceInvaderObject = SpaceInvaderObject;
 })(L02_SpaceInvader || (L02_SpaceInvader = {}));
 //# sourceMappingURL=SpaceInvaderObject.js.map

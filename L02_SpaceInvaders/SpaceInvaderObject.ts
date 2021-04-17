@@ -6,6 +6,8 @@ namespace L02_SpaceInvader {
       private static mtrWhite: f.Material = new f.Material("White", f.ShaderUniColor, new f.CoatColored());
       private static textureInvader: f.TextureImage = new f.TextureImage("./Assets/invader.png");
       private static mtrInvader: f.Material = new f.Material("Invader", f.ShaderTexture, new f.CoatTextured(f.Color.CSS("White"), SpaceInvaderObject.textureInvader));
+      private static textureMotherShip: f.TextureImage = new f.TextureImage("./Assets/mothership.png");
+      private static mtrMotherShip: f.Material = new f.Material("MotherShip", f.ShaderTexture, new f.CoatTextured(f.Color.CSS("White"), SpaceInvaderObject.textureMotherShip));
 
       public rect: f.Rectangle;
 
@@ -18,7 +20,10 @@ namespace L02_SpaceInvader {
           this.addComponent(cmpQuad);
           if (_texture === "invader") {
             this.addComponent(new f.ComponentMaterial(SpaceInvaderObject.mtrInvader));
-          } else {
+          } else if (_texture === "mothership") {
+            this.addComponent(new f.ComponentMaterial(SpaceInvaderObject.mtrMotherShip));
+          }
+          else {
             this.addComponent(new f.ComponentMaterial(SpaceInvaderObject.mtrWhite));
           }
       }

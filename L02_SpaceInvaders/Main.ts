@@ -11,25 +11,36 @@ namespace L02_SpaceInvader {
   let covers: f.Node;
   let invaders: f.Node;
   let walls: f.Node;
+  let motherShipNode: f.Node;
+  let motherShip: MotherShip;
 
   const xStartPosition: number = -8;
   const yInvaderStart: number = 11;
   const projectileOffset: number = 1;
   const invaderLineHeight: number = 1;
   const invaderSpeedGain: number = 0.1;
+  const motherShipRespawnRate: number = 15000;
 
   let velocity: number;
   let gameOver: boolean = false;
   let gunReady: boolean = true;
-  let characterLife: number;
   let enemyShootChancePercentage: number;
 
   let gameOverDiv: HTMLDivElement;
+  let scoreValue: HTMLParagraphElement;
+  let score: number;
+  let lifeValue: HTMLParagraphElement;
+  let characterLife: number;
   function init(): void {
     root = new f.Node("root");
     gameOverDiv = <HTMLDivElement>document.getElementById("gameOver");
+    scoreValue = <HTMLParagraphElement>document.getElementById("scoreValue");
+    lifeValue = <HTMLParagraphElement>document.getElementById("lifeValue");
+    score = 0;
+    updateScore();
     velocity = 10;
     characterLife = 3;
+    updateLife();
     enemyShootChancePercentage = 1;
     const canvas: HTMLCanvasElement = document.querySelector("canvas");
     let restartButton: HTMLButtonElement = <HTMLButtonElement>document.getElementById("restart");
@@ -40,11 +51,12 @@ namespace L02_SpaceInvader {
     createCovers();
     projectiles = new f.Node("Projectiles");
     root.addChild(projectiles);
-    let motherShip: MotherShip = new MotherShip("MotherShip", new f.Vector2(3, 12.25));
-    root.addChild(motherShip);
+    motherShipNode = new f.Node("MotherShip");
+    root.addChild(motherShipNode);
 
     f.Time.game.setTimer(300, 0, moveInvaders);
     f.Time.game.setTimer(300, 0, invaderShoot);
+    f.Time.game.setTimer(motherShipRespawnRate, 1, createMotherShip);
     let cmpCamera: f.ComponentCamera = new f.ComponentCamera();
     cmpCamera.mtxPivot.translateZ(20);
     cmpCamera.mtxPivot.translateY(6);
@@ -73,6 +85,8 @@ namespace L02_SpaceInvader {
     for (let projectile of projectiles.getChildren() as Projectile[]) {
       projectile.move();
     }
+
+    checkMotherShipCollision();
     viewport.draw();
   }
 
@@ -156,6 +170,8 @@ namespace L02_SpaceInvader {
           if (projectile.checkCollision(invader)) {
             projectiles.removeChild(projectile);
             invaders.removeChild(invader);
+            score += 1;
+            updateScore();
             enemyShootChancePercentage += 0.1;
             if(invaders.nChildren === 0)
               doGameOver();
@@ -170,6 +186,7 @@ namespace L02_SpaceInvader {
         if(projectile.checkCollision(character)) {
           projectiles.removeChild(projectile);
           characterLife--;
+          updateLife();
           if(characterLife === 0) {
             doGameOver();
           }
@@ -181,6 +198,16 @@ namespace L02_SpaceInvader {
         projectile.checkCollision(<SpaceInvaderObject>walls.getChildrenByName("wallBottom")[0])) {
         projectiles.removeChild(projectile);
       }
+
+      if(motherShip) {
+        if(projectile.checkCollision(motherShip)) {
+          projectiles.removeChild(projectile);
+          motherShipNode.removeChild(motherShip);
+          score += 10;
+          updateScore();
+          f.Time.game.setTimer(motherShipRespawnRate, 1, createMotherShip);
+        }
+      } 
     }
   }
 
@@ -262,5 +289,29 @@ namespace L02_SpaceInvader {
   function doGameOver(): void {
     gameOver = true;
     gameOverDiv.style.display = "block";
+  }
+
+  function createMotherShip(): void {
+    if(motherShipNode.nChildren !== 0) return;
+
+    motherShip = new MotherShip("MotherShip", new f.Vector2(3, 12.25));
+    motherShipNode.addChild(motherShip)
+    
+  }
+
+  function checkMotherShipCollision(): void {
+    if (motherShip) {
+      if(motherShip.checkCollision(<SpaceInvaderObject>walls.getChildrenByName("wallRight")[0]) || motherShip.checkCollision(<SpaceInvaderObject>walls.getChildrenByName("wallLeft")[0])) {
+        motherShip.invertVelocity();
+      }
+      motherShip.move();
+    }
+  }
+
+  function updateScore(): void  {
+    scoreValue.innerHTML = score.toString();
+  }
+  function updateLife(): void  {
+    lifeValue.innerHTML = characterLife.toString();
   }
 }

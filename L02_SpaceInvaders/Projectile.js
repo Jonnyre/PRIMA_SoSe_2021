@@ -4,7 +4,7 @@ var L02_SpaceInvader;
     var f = FudgeCore;
     class Projectile extends L02_SpaceInvader.SpaceInvaderObject {
         constructor(_name, _position, _fromInvader) {
-            super(_name, _position, new f.Vector2(0.1, 0.7));
+            super(_name, _position, new f.Vector2(0.1, 0.4));
             this.velocity = 10;
             this.fromInvader = _fromInvader;
             if (_fromInvader) {
