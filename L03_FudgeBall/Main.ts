@@ -1,5 +1,3 @@
-///<reference types="./libs/FudgeCore.js"/>
-
 import f = FudgeCore;
 
 namespace Turorials_FUDGEPhysics_Lesson1 {
@@ -45,8 +43,7 @@ namespace Turorials_FUDGEPhysics_Lesson1 {
 
         settingUpAPlayer();
 
-        ball = createNodeWithComponents("Ball", materialBall, new f.MeshSphere(), 1, f.PHYSICS_TYPE.DYNAMIC,
-            f.PHYSICS_GROUP.GROUP_2, f.COLLIDER_TYPE.SPHERE);
+        ball = createNodeWithComponents("Ball", materialBall, new f.MeshSphere(), 1, f.PHYSICS_TYPE.DYNAMIC, f.PHYSICS_GROUP.GROUP_2, f.COLLIDER_TYPE.SPHERE);
 
         ball.mtxLocal.translateY(2);
         ballBody = ball.getComponent(f.ComponentRigidbody);
@@ -83,7 +80,7 @@ namespace Turorials_FUDGEPhysics_Lesson1 {
                 let playerForward: f.Vector3;
                 playerForward = f.Vector3.Z();
                 playerForward.transform(player.mtxWorld, false);
-                let distance = f.Vector3.DIFFERENCE(ball.mtxWorld.translation, player.mtxWorld.translation);
+                let distance: f.Vector3 = f.Vector3.DIFFERENCE(ball.mtxWorld.translation, player.mtxWorld.translation);
                 if (distance.magnitude > 2.5)
                     return;
                 ballBody.applyImpulseAtPoint(
@@ -195,7 +192,7 @@ namespace Turorials_FUDGEPhysics_Lesson1 {
     }
 
     //Actually moving the player
-    function player_Movement(_deltaTime: number) {
+    function player_Movement(_deltaTime: number): void {
         let playerForward: f.Vector3;
         playerForward = f.Vector3.Z();
         playerForward.transform(player.mtxWorld, false);
@@ -213,7 +210,7 @@ namespace Turorials_FUDGEPhysics_Lesson1 {
 
 
 
-    function settingUpEnvironment() {
+    function settingUpEnvironment(): void {
         environment[0] = createNodeWithComponents("Ground", materialEnvironment, new f.MeshCube(), 0, f.PHYSICS_TYPE.STATIC, f.PHYSICS_GROUP.GROUP_2);
         environment[0].mtxLocal.scale(new f.Vector3(20, 0.3, 20));
         hierarchy.appendChild(environment[0]);
@@ -256,7 +253,7 @@ namespace Turorials_FUDGEPhysics_Lesson1 {
         hierarchy.appendChild(environment[7]);
     }
 
-    function settingUpTrigger() {
+    function settingUpTrigger(): void {
         // Ball Resetting Triggers
         environment[8] = createNodeWithComponents("Ground_BelowZero", materialGoal, new f.MeshCube(), 0, f.PHYSICS_TYPE.STATIC, f.PHYSICS_GROUP.TRIGGER);
         environment[8].removeComponent(environment[8].getComponent(f.ComponentMesh));
@@ -271,7 +268,7 @@ namespace Turorials_FUDGEPhysics_Lesson1 {
         hierarchy.appendChild(environment[9]);
     }
 
-    function resetBall(_event: f.EventPhysics) {
+    function resetBall(_event: f.EventPhysics): void {
         if (_event.cmpRigidbody.getContainer().name == "Ball") {
             ballBody.setVelocity(f.Vector3.ZERO());
             ballBody.setAngularVelocity(f.Vector3.ZERO());
@@ -279,20 +276,20 @@ namespace Turorials_FUDGEPhysics_Lesson1 {
         }
     }
 
-    function settingUpAJoint() {
-        environment[10] = createNodeWithComponents("Holder", new f.Material("Cube", f.ShaderFlat, new f.CoatColored(new f.Color(0.4, 0.4, 0.4, 1))), new f.MeshCube(), 1, f.PHYSICS_TYPE.STATIC, f.PHYSICS_GROUP.GROUP_1);
-        hierarchy.appendChild(environment[10]);
-        environment[10].mtxLocal.translate(new f.Vector3(5, 6, -2));
-        environment[10].mtxLocal.scale(new f.Vector3(0.5, 1, 0.5));
+    // function settingUpAJoint(): void {
+    //     environment[10] = createNodeWithComponents("Holder", new f.Material("Cube", f.ShaderFlat, new f.CoatColored(new f.Color(0.4, 0.4, 0.4, 1))), new f.MeshCube(), 1, f.PHYSICS_TYPE.STATIC, f.PHYSICS_GROUP.GROUP_1);
+    //     hierarchy.appendChild(environment[10]);
+    //     environment[10].mtxLocal.translate(new f.Vector3(5, 6, -2));
+    //     environment[10].mtxLocal.scale(new f.Vector3(0.5, 1, 0.5));
 
-        environment[11] = createNodeWithComponents("MovingDrill", new f.Material("Cube", f.ShaderFlat, new f.CoatColored(new f.Color(1, 1, 0, 1))), new f.MeshCube(), 1, f.PHYSICS_TYPE.DYNAMIC, f.PHYSICS_GROUP.GROUP_1);
-        hierarchy.appendChild(environment[11]);
-        environment[11].mtxLocal.translate(new f.Vector3(5, 2.5, -2));
-        environment[11].mtxLocal.scale(new f.Vector3(3, 2, 0.2));
-        let cylindricalJoint = new f.ComponentJointCylindrical(environment[10].getComponent(f.ComponentRigidbody), environment[11].getComponent(f.ComponentRigidbody), new f.Vector3(0, 1, 0));
-        environment[11].addComponent(cylindricalJoint);
-        cylindricalJoint.translationMotorLimitLower = -1;
-        cylindricalJoint.translationMotorLimitUpper = 0;
-    }
+    //     environment[11] = createNodeWithComponents("MovingDrill", new f.Material("Cube", f.ShaderFlat, new f.CoatColored(new f.Color(1, 1, 0, 1))), new f.MeshCube(), 1, f.PHYSICS_TYPE.DYNAMIC, f.PHYSICS_GROUP.GROUP_1);
+    //     hierarchy.appendChild(environment[11]);
+    //     environment[11].mtxLocal.translate(new f.Vector3(5, 2.5, -2));
+    //     environment[11].mtxLocal.scale(new f.Vector3(3, 2, 0.2));
+    //     let cylindricalJoint: f.ComponentJointCylindrical = new f.ComponentJointCylindrical(environment[10].getComponent(f.ComponentRigidbody), environment[11].getComponent(f.ComponentRigidbody), new f.Vector3(0, 1, 0));
+    //     environment[11].addComponent(cylindricalJoint);
+    //     cylindricalJoint.translationMotorLimitLower = -1;
+    //     cylindricalJoint.translationMotorLimitUpper = 0;
+    // }
 }
 
