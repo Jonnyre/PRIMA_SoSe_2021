@@ -93,31 +93,31 @@ namespace L02_SpaceInvader {
   function invaderShoot(): void {
     for (let invader of invaders.getChildren() as Invader[]) {
       let otherInvaderBelow: boolean = false;
-      if(Math.random() < enemyShootChancePercentage / 100) {
+      if (Math.random() < enemyShootChancePercentage / 100) {
         for (let invaderSecond of invaders.getChildren() as Invader[]) {
-          if(invaderSecond == invader) {
+          if (invaderSecond == invader) {
             continue;
           }
 
-        if(invader.rectBelow.collides(invaderSecond.rect)) {
-          otherInvaderBelow = true
+          if (invader.rectBelow.collides(invaderSecond.rect)) {
+            otherInvaderBelow = true;
+          }
         }
-      }
-      if(!otherInvaderBelow) {
-        let projectile: Projectile = new Projectile("Projectile", new f.Vector2(invader.mtxLocal.translation.x, invader.mtxLocal.translation.y), true);
-        projectiles.addChild(projectile);
+        if (!otherInvaderBelow) {
+          let projectile: Projectile = new Projectile("Projectile", new f.Vector2(invader.mtxLocal.translation.x, invader.mtxLocal.translation.y), true);
+          projectiles.addChild(projectile);
+        }
       }
     }
   }
-}
 
   function shootProjectile(): void {
-      const projectileStartX = character.getChild(0).mtxWorld.translation.x;
-      const projectileStartY = character.getChild(0).mtxWorld.translation.y + projectileOffset;
-      let projectile: Projectile = new Projectile("Projectile", new f.Vector2(projectileStartX, projectileStartY), false);
-      projectiles.addChild(projectile);
-      gunReady = false;
-      f.Time.game.setTimer(1000, 1, () => gunReady = true);
+    const projectileStartX: number = character.getChild(0).mtxWorld.translation.x;
+    const projectileStartY: number = character.getChild(0).mtxWorld.translation.y + projectileOffset;
+    let projectile: Projectile = new Projectile("Projectile", new f.Vector2(projectileStartX, projectileStartY), false);
+    projectiles.addChild(projectile);
+    gunReady = false;
+    f.Time.game.setTimer(1000, 1, () => gunReady = true);
   }
 
   function moveInvadersOnCollision(_xTranslateInvadersOnColision: number): void {
@@ -139,16 +139,16 @@ namespace L02_SpaceInvader {
       character.mtxLocal.translateX(-offset);
       character.setRectPosition();
     }
-      
+
 
     if (f.Keyboard.isPressedOne([f.KEYBOARD_CODE.D, f.KEYBOARD_CODE.ARROW_RIGHT])) {
       character.mtxLocal.translateX(+offset);
       character.setRectPosition();
     }
-      
+
 
     if (character.checkCollision(<SpaceInvaderObject>walls.getChildrenByName("wallLeft")[0]) ||
-       character.checkCollision(<SpaceInvaderObject>walls.getChildrenByName("wallRight")[0])) {
+      character.checkCollision(<SpaceInvaderObject>walls.getChildrenByName("wallRight")[0])) {
       character.mtxLocal.translation = oldCharacterPos;
       character.rect.position.x = oldCharacterRectX;
     }
@@ -165,7 +165,7 @@ namespace L02_SpaceInvader {
         }
       }
 
-      if(!projectile.fromInvader) {
+      if (!projectile.fromInvader) {
         for (let invader of invaders.getChildren() as Invader[]) {
           if (projectile.checkCollision(invader)) {
             projectiles.removeChild(projectile);
@@ -173,41 +173,41 @@ namespace L02_SpaceInvader {
             score += 1;
             updateScore();
             enemyShootChancePercentage += 0.1;
-            if(invaders.nChildren === 0)
+            if (invaders.nChildren === 0)
               doGameOver();
-            
-            if(Math.sign(velocity) === 1)
+
+            if (Math.sign(velocity) === 1)
               velocity += invaderSpeedGain;
             else
               velocity = -1 * (Math.abs(velocity) + invaderSpeedGain);
           }
         }
       } else {
-        if(projectile.checkCollision(character)) {
+        if (projectile.checkCollision(character)) {
           projectiles.removeChild(projectile);
           characterLife--;
           updateLife();
-          if(characterLife === 0) {
+          if (characterLife === 0) {
             doGameOver();
           }
         }
       }
-      
-    
+
+
       if (projectile.checkCollision(<SpaceInvaderObject>walls.getChildrenByName("wallTop")[0]) ||
         projectile.checkCollision(<SpaceInvaderObject>walls.getChildrenByName("wallBottom")[0])) {
         projectiles.removeChild(projectile);
       }
 
-      if(motherShip) {
-        if(projectile.checkCollision(motherShip)) {
+      if (motherShip) {
+        if (projectile.checkCollision(motherShip)) {
           projectiles.removeChild(projectile);
           motherShipNode.removeChild(motherShip);
           score += 10;
           updateScore();
           f.Time.game.setTimer(motherShipRespawnRate, 1, createMotherShip);
         }
-      } 
+      }
     }
   }
 
@@ -271,14 +271,14 @@ namespace L02_SpaceInvader {
   }
 
   function moveInvaders(): void {
-    let xTranslateInvadersOnColision = 0.5;
+    let xTranslateInvadersOnColision: number = 0.5;
     for (let invader of invaders.getChildren() as Invader[]) {
       if (invader.checkCollision(<SpaceInvaderObject>walls.getChildrenByName("wallRight")[0])) {
-        moveInvadersOnCollision(-xTranslateInvadersOnColision)
+        moveInvadersOnCollision(-xTranslateInvadersOnColision);
       }
 
       if (invader.checkCollision(<SpaceInvaderObject>walls.getChildrenByName("wallLeft")[0])) {
-          moveInvadersOnCollision(xTranslateInvadersOnColision)
+        moveInvadersOnCollision(xTranslateInvadersOnColision);
       }
 
       invader.move(velocity);
@@ -292,26 +292,26 @@ namespace L02_SpaceInvader {
   }
 
   function createMotherShip(): void {
-    if(motherShipNode.nChildren !== 0) return;
+    if (motherShipNode.nChildren !== 0) return;
 
     motherShip = new MotherShip("MotherShip", new f.Vector2(3, 12.25));
-    motherShipNode.addChild(motherShip)
-    
+    motherShipNode.addChild(motherShip);
+
   }
 
   function checkMotherShipCollision(): void {
     if (motherShip) {
-      if(motherShip.checkCollision(<SpaceInvaderObject>walls.getChildrenByName("wallRight")[0]) || motherShip.checkCollision(<SpaceInvaderObject>walls.getChildrenByName("wallLeft")[0])) {
+      if (motherShip.checkCollision(<SpaceInvaderObject>walls.getChildrenByName("wallRight")[0]) || motherShip.checkCollision(<SpaceInvaderObject>walls.getChildrenByName("wallLeft")[0])) {
         motherShip.invertVelocity();
       }
       motherShip.move();
     }
   }
 
-  function updateScore(): void  {
+  function updateScore(): void {
     scoreValue.innerHTML = score.toString();
   }
-  function updateLife(): void  {
+  function updateLife(): void {
     lifeValue.innerHTML = characterLife.toString();
   }
 }

@@ -67,7 +67,7 @@ var Turorials_FUDGEPhysics_Lesson1;
                 ballBody.applyImpulseAtPoint(new f.Vector3(playerForward.x * kickStrength / distance.magnitude, playerForward.y * kickStrength / distance.magnitude, playerForward.z * kickStrength / distance.magnitude), player.mtxWorld.translation);
             }
         });
-        f.Physics.start(hierarchy);
+        // f.Physics.start(hierarchy);
         f.Loop.addEventListener("loopFrame" /* LOOP_FRAME */, update);
         f.Loop.start(); //Stard the game loop
     }

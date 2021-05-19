@@ -89,7 +89,7 @@ namespace Turorials_FUDGEPhysics_Lesson1 {
             }
         });
 
-        f.Physics.start(hierarchy);
+        // f.Physics.start(hierarchy);
 
         f.Loop.addEventListener(f.EVENT.LOOP_FRAME, update);
         f.Loop.start(); //Stard the game loop

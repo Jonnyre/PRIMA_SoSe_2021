@@ -10,52 +10,60 @@ var L04_Editor;
     let player;
     let cmpCamera;
     let ball;
-    const speed = 5;
-    const rotate = 2.5;
-    const pickReleaseCooldown = 500;
-    let forward;
     let playerItem;
-    let canPickItem = true;
     let hasItem = false;
+    let firstPerson = true;
+    let canChangeView = true;
+    let forwardMovement = 0;
+    let sideMovement = 0;
+    let movementSpeed = 5;
+    let camSpeed = -0.2;
+    let isGrounded;
+    const jumpForce = 400;
     async function init() {
         await f.Project.loadResourcesFromHTML();
         root = f.Project.resources["Graph|2021-04-27T14:37:42.239Z|64317"];
-        f.Physics.world.setSolverIterations(1000);
-        f.Physics.settings.defaultRestitution = 0.3;
+        f.Physics.settings.debugMode = f.PHYSICS_DEBUGMODE.COLLIDERS;
+        f.Physics.settings.debugDraw = true;
+        f.Physics.settings.defaultRestitution = 0.5;
         f.Physics.settings.defaultFriction = 0.8;
         cmpCamera = new f.ComponentCamera();
-        // cmpCamera.mtxPivot.translate(ƒ.Vector3.ONE(3));
-        // cmpCamera.mtxPivot.lookAt(f.Vector3.ZERO());
-        cmpCamera.mtxPivot.translateY(1);
-        cmpCamera.mtxPivot.rotateX(15);
-        cmpCamera.mtxPivot.rotateY(0);
-        cmpCamera.mtxPivot.translateZ(-6);
         let canvas = document.querySelector("canvas");
         viewport = new f.Viewport();
         viewport.initialize("InteractiveViewport", root, cmpCamera, canvas);
         createPlayer();
         createRigidbodies();
-        f.Physics.start(root);
+        f.Physics.adjustTransforms(root, true);
         f.Physics.settings.debugDraw = true;
+        canvas.addEventListener("mousemove", hndMouse);
+        canvas.addEventListener("click", canvas.requestPointerLock);
         f.Loop.addEventListener("loopFrame" /* LOOP_FRAME */, update);
         f.Loop.start(); //Stard the game loop
+        document.addEventListener("keydown", hndKeyDown);
+        document.addEventListener("keyup", hndKeyRelease);
     }
     function update() {
-        movePlayer();
-        hndItem();
         f.Physics.world.simulate(f.Loop.timeFrameReal / 1000);
+        movePlayer();
+        checkIfGrounded();
+        hndItem();
+        changeCameraView();
         viewport.draw();
     }
     function createPlayer() {
         cmpPlayer = new f.ComponentRigidbody(75, f.PHYSICS_TYPE.DYNAMIC, f.COLLIDER_TYPE.CAPSULE, f.PHYSICS_GROUP.DEFAULT);
-        cmpPlayer.friction = 1;
-        cmpPlayer.restitution = 0.5;
+        cmpPlayer.friction = 0.01;
+        cmpPlayer.restitution = 0;
         cmpPlayer.rotationInfluenceFactor = f.Vector3.ZERO();
         player = new f.Node("Player");
+        let cmpAudio = new f.ComponentAudio();
         player.addComponent(new f.ComponentTransform());
+        f.AudioManager.default.listenTo(root);
+        f.AudioManager.default.listenWith(player.getComponent(f.ComponentAudioListener));
         player.mtxLocal.translateY(5);
         player.addComponent(cmpPlayer);
         player.addComponent(cmpCamera);
+        player.addComponent(cmpAudio);
         playerItem = new f.Node("PlayerItem");
         player.addChild(playerItem);
         root.appendChild(player);
@@ -63,60 +71,122 @@ var L04_Editor;
     function createRigidbodies() {
         let level = root.getChildrenByName("level")[0];
         for (let node of level.getChildren()) {
-            // node.mtxLocal.scaling = node.getComponent(f.ComponentMesh).mtxPivot.scaling;
-            // node.getComponent(f.ComponentMesh).mtxPivot.scaling = f.Vector3.ONE();
-            node.addComponent(new f.ComponentRigidbody(0, f.PHYSICS_TYPE.STATIC, f.COLLIDER_TYPE.CUBE, f.PHYSICS_GROUP.DEFAULT));
+            if (node.name === "cyclinder") {
+                node.addComponent(new f.ComponentRigidbody(2, f.PHYSICS_TYPE.DYNAMIC, f.COLLIDER_TYPE.CUBE, f.PHYSICS_GROUP.DEFAULT));
+                node.addComponent(new L04_Editor.ComponentScriptMove());
+            }
+            else if (node.name === "board") {
+                node.addComponent(new f.ComponentRigidbody(2, f.PHYSICS_TYPE.DYNAMIC, f.COLLIDER_TYPE.CUBE, f.PHYSICS_GROUP.DEFAULT));
+                node.addComponent(new L04_Editor.ComponentScriptJump());
+            }
+            else
+                node.addComponent(new f.ComponentRigidbody(0, f.PHYSICS_TYPE.STATIC, f.COLLIDER_TYPE.CUBE, f.PHYSICS_GROUP.DEFAULT));
         }
         ball = root.getChildrenByName("ball")[0];
-        // ball.mtxLocal.scaling = ball.getComponent(f.ComponentMesh).mtxPivot.scaling;
-        // ball.getComponent(f.ComponentMesh).mtxPivot.scaling = f.Vector3.ONE();
-        ball.addComponent(new f.ComponentRigidbody(1, f.PHYSICS_TYPE.DYNAMIC, f.COLLIDER_TYPE.CUBE, f.PHYSICS_GROUP.DEFAULT));
-        ball.getComponent(f.ComponentRigidbody).restitution = 2.5;
+        let ballAudio = new f.Audio("./Audio/AirHorn.mp3");
+        let cmpAudio = new f.ComponentAudio(ballAudio);
+        cmpAudio.volume = 0.1;
+        ball.addComponent(new L04_Editor.ComponentScriptAudio());
+        ball.addComponent(cmpAudio);
+        ball.addComponent(new f.ComponentRigidbody(5, f.PHYSICS_TYPE.DYNAMIC, f.COLLIDER_TYPE.SPHERE, f.PHYSICS_GROUP.DEFAULT));
+        ball.getComponent(f.ComponentRigidbody).restitution = 1.5;
     }
     function movePlayer() {
-        forward = player.mtxWorld.getZ();
-        if (ƒ.Keyboard.isPressedOne([ƒ.KEYBOARD_CODE.W, ƒ.KEYBOARD_CODE.ARROW_UP]))
-            cmpPlayer.setVelocity(ƒ.Vector3.SCALE(forward, speed));
-        if (ƒ.Keyboard.isPressedOne([ƒ.KEYBOARD_CODE.S, ƒ.KEYBOARD_CODE.ARROW_DOWN]))
-            cmpPlayer.setVelocity(ƒ.Vector3.SCALE(forward, -speed));
-        if (ƒ.Keyboard.isPressedOne([ƒ.KEYBOARD_CODE.A, ƒ.KEYBOARD_CODE.ARROW_LEFT]))
-            cmpPlayer.rotateBody(ƒ.Vector3.Y(rotate));
-        if (ƒ.Keyboard.isPressedOne([ƒ.KEYBOARD_CODE.D, ƒ.KEYBOARD_CODE.ARROW_RIGHT]))
-            cmpPlayer.rotateBody(ƒ.Vector3.Y(-rotate));
-        // cmpCamera.mtxPivot = player.mtxLocal;
+        let playerForward = player.mtxWorld.getZ();
+        let playerSideward = player.mtxWorld.getX();
+        playerSideward.normalize();
+        playerForward.normalize();
+        let movementVel = new f.Vector3();
+        movementVel.z = (playerForward.z * forwardMovement + playerSideward.z * sideMovement) * movementSpeed;
+        movementVel.y = cmpPlayer.getVelocity().y;
+        movementVel.x = (playerForward.x * forwardMovement + playerSideward.x * sideMovement) * movementSpeed;
+        cmpPlayer.setVelocity(movementVel);
     }
     function hndItem() {
-        if (ƒ.Keyboard.isPressedOne([ƒ.KEYBOARD_CODE.E])) {
-            if (hasItem) {
-                releaseItem();
-                return;
-            }
-            if (!canPickItem)
-                return;
+        if (ƒ.Keyboard.isPressedOne([ƒ.KEYBOARD_CODE.R]))
+            releaseItem();
+        if (ƒ.Keyboard.isPressedOne([ƒ.KEYBOARD_CODE.E]))
             pickItem();
-            f.Time.game.setTimer(pickReleaseCooldown, 1, () => canPickItem = true);
-        }
     }
     function releaseItem() {
+        if (!hasItem)
+            return;
         let item = playerItem.getChild(0);
-        playerItem.removeChild(item);
+        let itemRigidbody = item.getComponent(f.ComponentRigidbody);
         root.addChild(item);
-        ball.getComponent(f.ComponentRigidbody).physicsType = f.PHYSICS_TYPE.DYNAMIC;
+        itemRigidbody.applyAngularImpulse(f.Vector3.Z(10));
+        itemRigidbody.setVelocity(f.Vector3.ZERO());
+        itemRigidbody.physicsType = f.PHYSICS_TYPE.DYNAMIC;
         hasItem = false;
-        canPickItem = false;
-        f.Time.game.setTimer(pickReleaseCooldown, 1, () => canPickItem = true);
     }
     function pickItem() {
+        if (hasItem)
+            return;
         let hitInfo = f.Physics.raycast(cmpPlayer.getPosition(), player.mtxWorld.getZ(), 2.5);
         if (hitInfo.hit) {
-            canPickItem = false;
-            f.Time.game.setTimer(pickReleaseCooldown, 1, () => canPickItem = true);
             if (hitInfo.rigidbodyComponent.getContainer() === ball) {
                 ball.getComponent(f.ComponentRigidbody).physicsType = f.PHYSICS_TYPE.KINEMATIC;
                 playerItem.addChild(ball);
                 ball.mtxLocal.set(f.Matrix4x4.TRANSLATION(f.Vector3.Z(2)));
-                f.Time.game.setTimer(pickReleaseCooldown, 1, () => hasItem = true);
+                hasItem = true;
             }
+        }
+    }
+    function hndMouse(_event) {
+        cmpPlayer.rotateBody(ƒ.Vector3.Y(_event.movementX * camSpeed));
+    }
+    function changeCameraView() {
+        if (!ƒ.Keyboard.isPressedOne([ƒ.KEYBOARD_CODE.Q]))
+            return;
+        if (!canChangeView)
+            return;
+        if (firstPerson) {
+            cmpCamera.mtxPivot.translateY(1);
+            cmpCamera.mtxPivot.rotateX(15);
+            cmpCamera.mtxPivot.rotateY(0);
+            cmpCamera.mtxPivot.translateZ(-6);
+        }
+        else
+            cmpCamera.mtxPivot.set(f.Matrix4x4.IDENTITY());
+        firstPerson = !firstPerson;
+        canChangeView = false;
+        f.Time.game.setTimer(300, 1, () => canChangeView = true);
+    }
+    function hndKeyDown(_event) {
+        if (_event.code == f.KEYBOARD_CODE.W) {
+            forwardMovement = 1;
+        }
+        if (_event.code == f.KEYBOARD_CODE.A) {
+            sideMovement = 1;
+        }
+        if (_event.code == f.KEYBOARD_CODE.S) {
+            forwardMovement = -1;
+        }
+        if (_event.code == f.KEYBOARD_CODE.D) {
+            sideMovement = -1;
+        }
+        if (_event.code == f.KEYBOARD_CODE.SPACE) {
+            if (isGrounded)
+                cmpPlayer.applyLinearImpulse(new f.Vector3(0, jumpForce, 0));
+        }
+    }
+    function checkIfGrounded() {
+        let hitInfo;
+        hitInfo = f.Physics.raycast(cmpPlayer.getPosition(), new f.Vector3(0, -1, 0), 1.1);
+        isGrounded = hitInfo.hit;
+    }
+    function hndKeyRelease(_event) {
+        if (_event.code == f.KEYBOARD_CODE.W) {
+            forwardMovement = 0;
+        }
+        if (_event.code == f.KEYBOARD_CODE.A) {
+            sideMovement = 0;
+        }
+        if (_event.code == f.KEYBOARD_CODE.S) {
+            forwardMovement = 0;
+        }
+        if (_event.code == f.KEYBOARD_CODE.D) {
+            sideMovement = 0;
         }
     }
 })(L04_Editor || (L04_Editor = {}));
