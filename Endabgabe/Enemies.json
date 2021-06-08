@@ -1,0 +1,9 @@
+[
+  {
+    "id": 1,
+    "life": 15,
+    "damage": 5,
+    "bossdamagemulitplier": 3,
+    "bosslifemulitplier": 3
+  }
+]
