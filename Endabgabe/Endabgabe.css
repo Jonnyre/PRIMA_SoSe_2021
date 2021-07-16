@@ -21,11 +21,79 @@ canvas.fullscreen {
   width: 200px;
   height: 50px;
   position: absolute;
+  left: 1vw;
+  bottom: 5vh;
+}
+
+#weapon {
+  position: absolute;
   bottom: 100px;
   left: 20px;
 }
+#bossname {
+  text-align: center;
+  font-size: 20pt;
+  color: white;
+  margin: 0px;
+}
+#bosslifeDiv {
+  position: absolute;
+  top: 0px;
+  left: 30vw;
+}
+#bosslife {
+  width: 40vw;
+  height: 50px;
+  top: 1vh;
+}
 
-#crosshair_left, #crosshair_right, #crosshair_top, #crosshair_bottom {
+#gameover {
+  display: none;
+  background-color: #C0C0C0;
+  flex-direction: column;
+  justify-content: space-evenly;
+  align-items: center;
+  text-align: center;
+  width: 50vw;
+  height: 50vh;
+  position: absolute;
+  bottom: 25vh;
+  left: 25vw;
+}
+
+#gameovertext {
+  height: 20px;
+  display: flex;
+  font-size: 40pt;
+  text-align: center;
+}
+
+#restartLevel {
+  display: flex;
+  cursor: pointer;
+  background-color: grey;
+  justify-content: center;
+  align-items: center;
+  font-size: xx-large;
+  border-style: double;
+  width: 20vw;
+}
+
+#levelSelection {
+  display: flex;
+  cursor: pointer;
+  background-color: grey;
+  justify-content: center;
+  align-items: center;
+  font-size: xx-large;
+  border-style: double;
+  width: 20vw;
+}
+
+#crosshair_left,
+#crosshair_right,
+#crosshair_top,
+#crosshair_bottom {
   position: absolute;
   background-color: white;
 }

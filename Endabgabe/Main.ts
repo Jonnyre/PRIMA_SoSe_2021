@@ -1,3 +1,4 @@
+// https://github.com/Oneof300/MazeBall
 namespace Endabgabe {
     window.addEventListener("load", init);
     import f = FudgeCore;
@@ -8,11 +9,19 @@ namespace Endabgabe {
         damage: number;
         bosslifemulitplier: number;
         bossdamagemulitplier: number;
+        xp: number;
     }
+
+    export enum Game {
+        PLAY,
+        OVER
+    }
+
+    export let state: Game;
     let canvas: HTMLCanvasElement;
-    let root: f.Graph;
+    export let root: f.Graph;
     let viewport: f.Viewport;
-    let avatar: Avatar;
+    export let avatar: Avatar;
     let cmpCamera: f.ComponentCamera;
 
     let firstPerson: boolean = true;
@@ -23,6 +32,7 @@ namespace Endabgabe {
     const jumpForce: number = 400;
     let canAttack: boolean = true;
     let enemies: IEnemie[];
+    let levelId: number = 0;
 
     enum WEAPON {
         BOW = 0,
@@ -31,22 +41,35 @@ namespace Endabgabe {
     let equippedWeapon: WEAPON = WEAPON.SWORD;
 
     async function init(): Promise<void> {
+        let currentLocation: string = window.location.search;
+        levelId = Number(currentLocation.replace("?id=", ""));
+        console.log(levelId);
+        if (levelId == 0)
+            levelId = 1;
         await f.Project.loadResourcesFromHTML();
         root = <f.Graph>f.Project.resources["Graph|2021-04-27T14:37:42.239Z|64317"];
 
-        f.Physics.settings.debugMode = f.PHYSICS_DEBUGMODE.COLLIDERS;
-        f.Physics.settings.debugDraw = true;
+        removedUnusedLevel();
+
+        f.Physics.initializePhysics();
+        // f.Physics.settings.debugMode = f.PHYSICS_DEBUGMODE.COLLIDERS;
+        // f.Physics.settings.debugDraw = true;
         f.Physics.settings.defaultRestitution = 0.5;
         f.Physics.settings.defaultFriction = 0.8;
         canvas = document.querySelector("canvas");
         viewport = new f.Viewport();
 
+        state = Game.PLAY;
         let enemiesJson: Response = await fetch("./Enemies.json");
         enemies = await enemiesJson.json();
         createAvatar();
         createRigidbodies();
         createEnemies();
 
+        let restartButton: HTMLDivElement = <HTMLDivElement>document.getElementById("restartLevel");
+        restartButton.addEventListener("click", restartLevel);
+        let levelSelectButton: HTMLDivElement = <HTMLDivElement>document.getElementById("levelSelection");
+        levelSelectButton.addEventListener("click", clickLevelSelect);
         f.Physics.adjustTransforms(root, true);
 
         viewport.initialize("InteractiveViewport", root, cmpCamera, canvas);
@@ -60,11 +83,15 @@ namespace Endabgabe {
         document.addEventListener("keyup", hndKeyRelease);
 
         f.Loop.addEventListener(f.EVENT.LOOP_FRAME, update);
-        f.Loop.start(); //Stard the game loop
+        f.Loop.start();
     }
 
     function update(): void {
         f.Physics.world.simulate(f.Loop.timeFrameReal / 1000);
+
+        if (state == Game.OVER) return;
+
+
         switchWeapon();
         avatar.move();
         changeCameraView();
@@ -74,20 +101,34 @@ namespace Endabgabe {
     function createAvatar(): void {
         cmpCamera = new f.ComponentCamera();
         avatar = new Avatar("avatar", cmpCamera);
+        avatar.camNode.mtxLocal.rotateY(-90);
+        avatar.mtxLocal.translateY(1);
         f.AudioManager.default.listenTo(root);
         f.AudioManager.default.listenWith(avatar.getComponent(f.ComponentAudioListener));
         root.appendChild(avatar);
     }
 
     function createRigidbodies(): void {
-        let level: f.Node = root.getChildrenByName("level")[0];
+        let levelParent: f.Node = root.getChildrenByName("level" + levelId)[0];
+        let level: f.Node = levelParent.getChildrenByName("level")[0];
 
-        for (let node of level.getChildren())
-            node.addComponent(new f.ComponentRigidbody(0, f.PHYSICS_TYPE.STATIC, f.COLLIDER_TYPE.CUBE, f.PHYSICS_GROUP.DEFAULT));
+        let floor: f.Node = level.getChildrenByName("floor")[0];
+        for (let row of floor.getChildren()) {
+            for (let piece of row.getChildren())
+                piece.addComponent(new f.ComponentRigidbody(0, f.PHYSICS_TYPE.STATIC, f.COLLIDER_TYPE.CUBE, f.PHYSICS_GROUP.DEFAULT));
+        }
+
+        let walls: f.Node = level.getChildrenByName("walls")[0];
+        for (let wall of walls.getChildren())
+            wall.addComponent(new f.ComponentRigidbody(0, f.PHYSICS_TYPE.STATIC, f.COLLIDER_TYPE.CUBE, f.PHYSICS_GROUP.DEFAULT));
     }
 
     function hndMouse(_event: MouseEvent): void {
-        avatar.getComponent(f.ComponentRigidbody).rotateBody(f.Vector3.Y(_event.movementX * camSpeed));
+        console.log();
+        avatar.camNode.mtxLocal.rotateY(_event.movementX * camSpeed, true);
+        let xRotation: number = - _event.movementY * camSpeed;
+        if (avatar.camNode.mtxLocal.rotation.x + xRotation > -45 && avatar.camNode.mtxLocal.rotation.x + xRotation < 45)
+            avatar.camNode.mtxLocal.rotateX(-_event.movementY * camSpeed);
     }
 
     function changeCameraView(): void {
@@ -111,16 +152,16 @@ namespace Endabgabe {
 
     function hndKeyDown(_event: KeyboardEvent): void {
         if (_event.code == f.KEYBOARD_CODE.W)
-            avatar.forwardMovement = 1;
-
-        if (_event.code == f.KEYBOARD_CODE.A)
             avatar.sideMovement = 1;
 
+        if (_event.code == f.KEYBOARD_CODE.A)
+            avatar.forwardMovement = 1;
+
         if (_event.code == f.KEYBOARD_CODE.S)
-            avatar.forwardMovement = -1;
+            avatar.sideMovement = -1;
 
         if (_event.code == f.KEYBOARD_CODE.D)
-            avatar.sideMovement = -1;
+            avatar.forwardMovement = -1;
 
         if (_event.code == f.KEYBOARD_CODE.SPACE) {
             if (avatar.isGrounded) avatar.getComponent(f.ComponentRigidbody).applyLinearImpulse(new f.Vector3(0, jumpForce, 0));
@@ -132,16 +173,16 @@ namespace Endabgabe {
 
     function hndKeyRelease(_event: KeyboardEvent): void {
         if (_event.code == f.KEYBOARD_CODE.W)
-            avatar.forwardMovement = 0;
+            avatar.sideMovement = 0;
 
         if (_event.code == f.KEYBOARD_CODE.A)
-            avatar.sideMovement = 0;
-
-        if (_event.code == f.KEYBOARD_CODE.S)
             avatar.forwardMovement = 0;
 
-        if (_event.code == f.KEYBOARD_CODE.D)
+        if (_event.code == f.KEYBOARD_CODE.S)
             avatar.sideMovement = 0;
+
+        if (_event.code == f.KEYBOARD_CODE.D)
+            avatar.forwardMovement = 0;
 
 
         if (_event.code == f.KEYBOARD_CODE.SHIFT_LEFT)
@@ -206,23 +247,24 @@ namespace Endabgabe {
             if (!canAttack) return;
             switch (equippedWeapon) {
                 case WEAPON.BOW:
-                    let projectile: Projectile = new Projectile("Projectile", avatar.mtxWorld.translation, avatar.mtxWorld.getZ());
-                    projectile.getComponent(f.ComponentRigidbody).addEventListener(f.EVENT_PHYSICS.COLLISION_ENTER, hndCollision);
-                    root.addChild(projectile);
-                    let direction: f.Vector3 = avatar.mtxWorld.getZ();
-                    direction.scale(6);
+                    let arrow: Arrow = new Arrow("Arrow", avatar.getComponent(f.ComponentRigidbody).getPosition(), avatar.camNode.mtxLocal.getZ());
+                    arrow.getComponent(f.ComponentRigidbody).addEventListener(f.EVENT_PHYSICS.COLLISION_ENTER, hndCollision);
+                    root.addChild(arrow);
+                    let direction: f.Vector3 = avatar.camNode.mtxLocal.getZ();
+                    direction.scale(4);
                     direction.y += 1;
-                    projectile.getComponent(f.ComponentRigidbody).applyLinearImpulse(direction);
+                    arrow.getComponent(f.ComponentRigidbody).applyLinearImpulse(direction);
                     canAttack = false;
                     f.Time.game.setTimer(500, 1, () => canAttack = true);
-                    // projectile.getComponent(f.ComponentRigidbody).addEventListener(f.EVENT_PHYSICS.COLLISION_ENTER, hndCollision);
                     break;
                 case WEAPON.SWORD:
-                    let hitInfo: f.RayHitInfo = f.Physics.raycast(avatar.getComponent(f.ComponentRigidbody).getPosition(), avatar.mtxWorld.getZ(), 4.5);
+                    let hitInfo: f.RayHitInfo = f.Physics.raycast(avatar.getComponent(f.ComponentRigidbody).getPosition(), avatar.camNode.mtxWorld.getZ(), 4.5);
                     if (hitInfo.hit) {
-                        if (hitInfo.rigidbodyComponent.getContainer().name === "enemie" || hitInfo.rigidbodyComponent.getContainer().name === "boss") {
-                            hitInfo.rigidbodyComponent.getContainer().getComponent(ComponentScriptEnemie).enemyProps.life -= 5;
-                            console.log(hitInfo.rigidbodyComponent.getContainer().getComponent(ComponentScriptEnemie).enemyProps.life);
+                        let objectHit: f.Node = hitInfo.rigidbodyComponent.getContainer();
+                        if (objectHit.name === "enemie" || objectHit.name === "boss") {
+                            attackEnemie(objectHit);
+                            canAttack = false;
+                            f.Time.game.setTimer(500, 1, () => canAttack = true);
                         }
                     }
                     break;
@@ -234,36 +276,95 @@ namespace Endabgabe {
     }
 
     function createEnemies(): void {
-        let enemiesNode: f.Node = root.getChildrenByName("enemies")[0];
+        let level: f.Node = root.getChildrenByName("level" + levelId)[0];
+        let enemiesNode: f.Node = level.getChildrenByName("enemies")[0];
 
         for (let enemie of enemiesNode.getChildren()) {
-            enemie.addComponent(new ComponentScriptEnemie());
-            enemie.getComponent(ComponentScriptEnemie).enemyProps = {
-                id: enemies[0].id,
-                damage: enemies[0].damage,
-                life: enemies[0].life,
-                bossdamagemulitplier: enemies[0].bossdamagemulitplier,
-                bosslifemulitplier: enemies[0].bosslifemulitplier
-            };
+            let enemieComponent: ComponentScriptEnemie = new ComponentScriptEnemie();
+            enemie.addComponent(enemieComponent);
+            if (enemie.name === "boss") {
+                enemieComponent.enemyProps = {
+                    id: enemies[0].id,
+                    damage: enemies[0].damage * enemies[0].bossdamagemulitplier,
+                    life: enemies[0].life * enemies[0].bosslifemulitplier,
+                    bossdamagemulitplier: enemies[0].bossdamagemulitplier,
+                    bosslifemulitplier: enemies[0].bosslifemulitplier,
+                    xp: enemies[0].xp
+                };
+                gameState.bosslife = enemies[0].life * enemies[0].bosslifemulitplier;
+                let progress: HTMLProgressElement = <HTMLProgressElement>document.getElementById("bosslife");
+                progress.max = enemies[0].life * enemies[0].bosslifemulitplier;
+            }
+            else
+                enemieComponent.enemyProps = {
+                    id: enemies[0].id,
+                    damage: enemies[0].damage,
+                    life: enemies[0].life,
+                    bossdamagemulitplier: enemies[0].bossdamagemulitplier,
+                    bosslifemulitplier: enemies[0].bosslifemulitplier,
+                    xp: enemies[0].xp
+                };
             enemie.addComponent(new f.ComponentRigidbody(0, f.PHYSICS_TYPE.STATIC, f.COLLIDER_TYPE.CUBE, f.PHYSICS_GROUP.DEFAULT));
-            // enemie.getComponent(f.ComponentRigidbody).addEventListener(f.EVENT_PHYSICS.COLLISION_ENTER, hndCollision);
         }
     }
 
     function hndCollision(_event: f.EventPhysics): void {
-        if (_event.cmpRigidbody.getContainer().name === "boss" || _event.cmpRigidbody.getContainer().name === "enemie") {
-            console.log(_event.cmpRigidbody.getContainer().getComponent(ComponentScriptEnemie).enemyProps.life -= 5);
+        let objectHit: f.Node = _event.cmpRigidbody.getContainer();
+        if (objectHit.name === "boss" || objectHit.name === "enemie")
+            attackEnemie(objectHit);
 
-            if (_event.cmpRigidbody.getContainer().getComponent(ComponentScriptEnemie).enemyProps.life <= 0) {
-                let enemiesNode: f.Node = root.getChildrenByName("enemies")[0];
-                enemiesNode.removeChild(enemiesNode.getChildrenByName(_event.cmpRigidbody.getContainer().name)[0]);
-            }
-        }
-
-        if (_event.cmpRigidbody.getContainer().name !== "Avatar") {
-            let projectile: Projectile = (<f.ComponentRigidbody>_event.target).getContainer();
+        if (objectHit.name !== "Avatar") {
+            let projectile: Arrow = (<f.ComponentRigidbody>_event.target).getContainer();
             projectile.getComponent(f.ComponentRigidbody).physicsType = f.PHYSICS_TYPE.STATIC;
-            f.Time.game.setTimer(1000, 1, () => root.removeChild(projectile));
+            f.Time.game.setTimer(1000, 1, () => {
+                root.removeChild(projectile);
+                if (projectile.getComponent(f.ComponentRigidbody) != undefined)
+                    projectile.removeComponent(projectile.getComponent(f.ComponentRigidbody));
+                return;
+            });
+        }
+    }
+
+    function attackEnemie(_objectHit: f.Node): void {
+        _objectHit.getComponent(ComponentScriptEnemie).enemyProps.life -= 5;
+        if (_objectHit.name == "boss")
+            gameState.bosslife = Number(_objectHit.getComponent(ComponentScriptEnemie).enemyProps.life);
+
+        if (_objectHit.getComponent(ComponentScriptEnemie).enemyProps.life <= 0) {
+            let level: f.Node = root.getChildrenByName("level" + levelId)[0];
+            let enemiesNode: f.Node = level.getChildrenByName("enemies")[0];
+            enemiesNode.removeChild(_objectHit);
+            _objectHit.removeComponent(_objectHit.getComponent(f.ComponentRigidbody));
+            avatar.xp += _objectHit.getComponent(ComponentScriptEnemie).enemyProps.xp;
+            if (enemiesNode.nChildren == 0)
+                console.log("win");
+        }
+    }
+
+    export function gameover(): void {
+        state = Game.OVER;
+
+        document.exitPointerLock();
+        let gameOverDiv: HTMLDivElement = <HTMLDivElement>document.getElementById("gameover");
+        gameOverDiv.style.display = "flex";
+    }
+
+    async function restartLevel(): Promise<void> {
+        let gameOverDiv: HTMLDivElement = <HTMLDivElement>document.getElementById("gameover");
+        gameOverDiv.style.display = "none";
+        await init();
+    }
+
+    function clickLevelSelect(): void {
+        window.location.href = "./LevelSelect/LevelSelect.html";
+    }
+
+    function removedUnusedLevel(): void {
+        for (let currentLevel: number = 0; currentLevel < 6; currentLevel++) {
+            if (currentLevel != levelId) {
+                let level: f.Node = root.getChildrenByName("level" + currentLevel)[0];
+                root.removeChild(level);
+            }
         }
     }
 }

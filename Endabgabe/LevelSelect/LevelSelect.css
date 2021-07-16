@@ -1,0 +1,50 @@
+html,
+body {
+  padding: 0px;
+  margin: 0px;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+#topdiv {
+  background-color: #ffdacc;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  flex: 1;
+  flex-direction: column;
+}
+
+#welcome {
+    display: flex;
+    justify-content: center;
+    border-style: dotted;
+    font-size: 40pt;
+}
+
+#texttop {
+  display: flex;
+  justify-content: center;
+  font-size: xx-large;
+  margin: 10px;
+}
+
+#levels {
+  display: flex;
+  flex: 1;
+  font-size: xx-large;
+  flex-direction: column;
+  justify-content: space-evenly;
+}
+
+.level {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: grey;
+  flex: 1;
+  cursor: pointer;
+  margin: 10px;
+  border-style: double;
+}

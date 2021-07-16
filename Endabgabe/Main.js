@@ -1,12 +1,17 @@
 "use strict";
+// https://github.com/Oneof300/MazeBall
 var Endabgabe;
+// https://github.com/Oneof300/MazeBall
 (function (Endabgabe) {
     window.addEventListener("load", init);
     var f = FudgeCore;
+    let Game;
+    (function (Game) {
+        Game[Game["PLAY"] = 0] = "PLAY";
+        Game[Game["OVER"] = 1] = "OVER";
+    })(Game = Endabgabe.Game || (Endabgabe.Game = {}));
     let canvas;
-    let root;
     let viewport;
-    let avatar;
     let cmpCamera;
     let firstPerson = true;
     let canChangeView = true;
@@ -15,6 +20,7 @@ var Endabgabe;
     const jumpForce = 400;
     let canAttack = true;
     let enemies;
+    let levelId = 0;
     let WEAPON;
     (function (WEAPON) {
         WEAPON[WEAPON["BOW"] = 0] = "BOW";
@@ -22,21 +28,33 @@ var Endabgabe;
     })(WEAPON || (WEAPON = {}));
     let equippedWeapon = WEAPON.SWORD;
     async function init() {
+        let currentLocation = window.location.search;
+        levelId = Number(currentLocation.replace("?id=", ""));
+        console.log(levelId);
+        if (levelId == 0)
+            levelId = 1;
         await f.Project.loadResourcesFromHTML();
-        root = f.Project.resources["Graph|2021-04-27T14:37:42.239Z|64317"];
-        f.Physics.settings.debugMode = f.PHYSICS_DEBUGMODE.COLLIDERS;
-        f.Physics.settings.debugDraw = true;
+        Endabgabe.root = f.Project.resources["Graph|2021-04-27T14:37:42.239Z|64317"];
+        removedUnusedLevel();
+        f.Physics.initializePhysics();
+        // f.Physics.settings.debugMode = f.PHYSICS_DEBUGMODE.COLLIDERS;
+        // f.Physics.settings.debugDraw = true;
         f.Physics.settings.defaultRestitution = 0.5;
         f.Physics.settings.defaultFriction = 0.8;
         canvas = document.querySelector("canvas");
         viewport = new f.Viewport();
+        Endabgabe.state = Game.PLAY;
         let enemiesJson = await fetch("./Enemies.json");
         enemies = await enemiesJson.json();
         createAvatar();
         createRigidbodies();
         createEnemies();
-        f.Physics.adjustTransforms(root, true);
-        viewport.initialize("InteractiveViewport", root, cmpCamera, canvas);
+        let restartButton = document.getElementById("restartLevel");
+        restartButton.addEventListener("click", restartLevel);
+        let levelSelectButton = document.getElementById("levelSelection");
+        levelSelectButton.addEventListener("click", clickLevelSelect);
+        f.Physics.adjustTransforms(Endabgabe.root, true);
+        viewport.initialize("InteractiveViewport", Endabgabe.root, cmpCamera, canvas);
         document.addEventListener("mousemove", hndMouse);
         document.addEventListener("click", onPointerDown);
         document.addEventListener("pointerlockchange", pointerLockChange);
@@ -44,29 +62,44 @@ var Endabgabe;
         document.addEventListener("keydown", hndKeyDown);
         document.addEventListener("keyup", hndKeyRelease);
         f.Loop.addEventListener("loopFrame" /* LOOP_FRAME */, update);
-        f.Loop.start(); //Stard the game loop
+        f.Loop.start();
     }
     function update() {
         f.Physics.world.simulate(f.Loop.timeFrameReal / 1000);
+        if (Endabgabe.state == Game.OVER)
+            return;
         switchWeapon();
-        avatar.move();
+        Endabgabe.avatar.move();
         changeCameraView();
         viewport.draw();
     }
     function createAvatar() {
         cmpCamera = new f.ComponentCamera();
-        avatar = new Endabgabe.Avatar("avatar", cmpCamera);
-        f.AudioManager.default.listenTo(root);
-        f.AudioManager.default.listenWith(avatar.getComponent(f.ComponentAudioListener));
-        root.appendChild(avatar);
+        Endabgabe.avatar = new Endabgabe.Avatar("avatar", cmpCamera);
+        Endabgabe.avatar.camNode.mtxLocal.rotateY(-90);
+        Endabgabe.avatar.mtxLocal.translateY(1);
+        f.AudioManager.default.listenTo(Endabgabe.root);
+        f.AudioManager.default.listenWith(Endabgabe.avatar.getComponent(f.ComponentAudioListener));
+        Endabgabe.root.appendChild(Endabgabe.avatar);
     }
     function createRigidbodies() {
-        let level = root.getChildrenByName("level")[0];
-        for (let node of level.getChildren())
-            node.addComponent(new f.ComponentRigidbody(0, f.PHYSICS_TYPE.STATIC, f.COLLIDER_TYPE.CUBE, f.PHYSICS_GROUP.DEFAULT));
+        let levelParent = Endabgabe.root.getChildrenByName("level" + levelId)[0];
+        let level = levelParent.getChildrenByName("level")[0];
+        let floor = level.getChildrenByName("floor")[0];
+        for (let row of floor.getChildren()) {
+            for (let piece of row.getChildren())
+                piece.addComponent(new f.ComponentRigidbody(0, f.PHYSICS_TYPE.STATIC, f.COLLIDER_TYPE.CUBE, f.PHYSICS_GROUP.DEFAULT));
+        }
+        let walls = level.getChildrenByName("walls")[0];
+        for (let wall of walls.getChildren())
+            wall.addComponent(new f.ComponentRigidbody(0, f.PHYSICS_TYPE.STATIC, f.COLLIDER_TYPE.CUBE, f.PHYSICS_GROUP.DEFAULT));
     }
     function hndMouse(_event) {
-        avatar.getComponent(f.ComponentRigidbody).rotateBody(f.Vector3.Y(_event.movementX * camSpeed));
+        console.log();
+        Endabgabe.avatar.camNode.mtxLocal.rotateY(_event.movementX * camSpeed, true);
+        let xRotation = -_event.movementY * camSpeed;
+        if (Endabgabe.avatar.camNode.mtxLocal.rotation.x + xRotation > -45 && Endabgabe.avatar.camNode.mtxLocal.rotation.x + xRotation < 45)
+            Endabgabe.avatar.camNode.mtxLocal.rotateX(-_event.movementY * camSpeed);
     }
     function changeCameraView() {
         if (!f.Keyboard.isPressedOne([f.KEYBOARD_CODE.Q]))
@@ -87,31 +120,31 @@ var Endabgabe;
     }
     function hndKeyDown(_event) {
         if (_event.code == f.KEYBOARD_CODE.W)
-            avatar.forwardMovement = 1;
+            Endabgabe.avatar.sideMovement = 1;
         if (_event.code == f.KEYBOARD_CODE.A)
-            avatar.sideMovement = 1;
+            Endabgabe.avatar.forwardMovement = 1;
         if (_event.code == f.KEYBOARD_CODE.S)
-            avatar.forwardMovement = -1;
+            Endabgabe.avatar.sideMovement = -1;
         if (_event.code == f.KEYBOARD_CODE.D)
-            avatar.sideMovement = -1;
+            Endabgabe.avatar.forwardMovement = -1;
         if (_event.code == f.KEYBOARD_CODE.SPACE) {
-            if (avatar.isGrounded)
-                avatar.getComponent(f.ComponentRigidbody).applyLinearImpulse(new f.Vector3(0, jumpForce, 0));
+            if (Endabgabe.avatar.isGrounded)
+                Endabgabe.avatar.getComponent(f.ComponentRigidbody).applyLinearImpulse(new f.Vector3(0, jumpForce, 0));
         }
         if (_event.code == f.KEYBOARD_CODE.SHIFT_LEFT)
-            avatar.sprint();
+            Endabgabe.avatar.sprint();
     }
     function hndKeyRelease(_event) {
         if (_event.code == f.KEYBOARD_CODE.W)
-            avatar.forwardMovement = 0;
+            Endabgabe.avatar.sideMovement = 0;
         if (_event.code == f.KEYBOARD_CODE.A)
-            avatar.sideMovement = 0;
+            Endabgabe.avatar.forwardMovement = 0;
         if (_event.code == f.KEYBOARD_CODE.S)
-            avatar.forwardMovement = 0;
+            Endabgabe.avatar.sideMovement = 0;
         if (_event.code == f.KEYBOARD_CODE.D)
-            avatar.sideMovement = 0;
+            Endabgabe.avatar.forwardMovement = 0;
         if (_event.code == f.KEYBOARD_CODE.SHIFT_LEFT)
-            avatar.walk();
+            Endabgabe.avatar.walk();
     }
     function switchWeapon() {
         if (f.Keyboard.isPressedOne([f.KEYBOARD_CODE.ONE])) {
@@ -162,23 +195,24 @@ var Endabgabe;
                 return;
             switch (equippedWeapon) {
                 case WEAPON.BOW:
-                    let projectile = new Endabgabe.Projectile("Projectile", avatar.mtxWorld.translation, avatar.mtxWorld.getZ());
-                    projectile.getComponent(f.ComponentRigidbody).addEventListener("ColliderEnteredCollision" /* COLLISION_ENTER */, hndCollision);
-                    root.addChild(projectile);
-                    let direction = avatar.mtxWorld.getZ();
-                    direction.scale(6);
+                    let arrow = new Endabgabe.Arrow("Arrow", Endabgabe.avatar.getComponent(f.ComponentRigidbody).getPosition(), Endabgabe.avatar.camNode.mtxLocal.getZ());
+                    arrow.getComponent(f.ComponentRigidbody).addEventListener("ColliderEnteredCollision" /* COLLISION_ENTER */, hndCollision);
+                    Endabgabe.root.addChild(arrow);
+                    let direction = Endabgabe.avatar.camNode.mtxLocal.getZ();
+                    direction.scale(4);
                     direction.y += 1;
-                    projectile.getComponent(f.ComponentRigidbody).applyLinearImpulse(direction);
+                    arrow.getComponent(f.ComponentRigidbody).applyLinearImpulse(direction);
                     canAttack = false;
                     f.Time.game.setTimer(500, 1, () => canAttack = true);
-                    // projectile.getComponent(f.ComponentRigidbody).addEventListener(f.EVENT_PHYSICS.COLLISION_ENTER, hndCollision);
                     break;
                 case WEAPON.SWORD:
-                    let hitInfo = f.Physics.raycast(avatar.getComponent(f.ComponentRigidbody).getPosition(), avatar.mtxWorld.getZ(), 4.5);
+                    let hitInfo = f.Physics.raycast(Endabgabe.avatar.getComponent(f.ComponentRigidbody).getPosition(), Endabgabe.avatar.camNode.mtxWorld.getZ(), 4.5);
                     if (hitInfo.hit) {
-                        if (hitInfo.rigidbodyComponent.getContainer().name === "enemie" || hitInfo.rigidbodyComponent.getContainer().name === "boss") {
-                            hitInfo.rigidbodyComponent.getContainer().getComponent(Endabgabe.ComponentScriptEnemie).enemyProps.life -= 5;
-                            console.log(hitInfo.rigidbodyComponent.getContainer().getComponent(Endabgabe.ComponentScriptEnemie).enemyProps.life);
+                        let objectHit = hitInfo.rigidbodyComponent.getContainer();
+                        if (objectHit.name === "enemie" || objectHit.name === "boss") {
+                            attackEnemie(objectHit);
+                            canAttack = false;
+                            f.Time.game.setTimer(500, 1, () => canAttack = true);
                         }
                     }
                     break;
@@ -189,32 +223,86 @@ var Endabgabe;
         }
     }
     function createEnemies() {
-        let enemiesNode = root.getChildrenByName("enemies")[0];
+        let level = Endabgabe.root.getChildrenByName("level" + levelId)[0];
+        let enemiesNode = level.getChildrenByName("enemies")[0];
         for (let enemie of enemiesNode.getChildren()) {
-            enemie.addComponent(new Endabgabe.ComponentScriptEnemie());
-            enemie.getComponent(Endabgabe.ComponentScriptEnemie).enemyProps = {
-                id: enemies[0].id,
-                damage: enemies[0].damage,
-                life: enemies[0].life,
-                bossdamagemulitplier: enemies[0].bossdamagemulitplier,
-                bosslifemulitplier: enemies[0].bosslifemulitplier
-            };
+            let enemieComponent = new Endabgabe.ComponentScriptEnemie();
+            enemie.addComponent(enemieComponent);
+            if (enemie.name === "boss") {
+                enemieComponent.enemyProps = {
+                    id: enemies[0].id,
+                    damage: enemies[0].damage * enemies[0].bossdamagemulitplier,
+                    life: enemies[0].life * enemies[0].bosslifemulitplier,
+                    bossdamagemulitplier: enemies[0].bossdamagemulitplier,
+                    bosslifemulitplier: enemies[0].bosslifemulitplier,
+                    xp: enemies[0].xp
+                };
+                Endabgabe.gameState.bosslife = enemies[0].life * enemies[0].bosslifemulitplier;
+                let progress = document.getElementById("bosslife");
+                progress.max = enemies[0].life * enemies[0].bosslifemulitplier;
+            }
+            else
+                enemieComponent.enemyProps = {
+                    id: enemies[0].id,
+                    damage: enemies[0].damage,
+                    life: enemies[0].life,
+                    bossdamagemulitplier: enemies[0].bossdamagemulitplier,
+                    bosslifemulitplier: enemies[0].bosslifemulitplier,
+                    xp: enemies[0].xp
+                };
             enemie.addComponent(new f.ComponentRigidbody(0, f.PHYSICS_TYPE.STATIC, f.COLLIDER_TYPE.CUBE, f.PHYSICS_GROUP.DEFAULT));
-            // enemie.getComponent(f.ComponentRigidbody).addEventListener(f.EVENT_PHYSICS.COLLISION_ENTER, hndCollision);
         }
     }
     function hndCollision(_event) {
-        if (_event.cmpRigidbody.getContainer().name === "boss" || _event.cmpRigidbody.getContainer().name === "enemie") {
-            console.log(_event.cmpRigidbody.getContainer().getComponent(Endabgabe.ComponentScriptEnemie).enemyProps.life -= 5);
-            if (_event.cmpRigidbody.getContainer().getComponent(Endabgabe.ComponentScriptEnemie).enemyProps.life <= 0) {
-                let enemiesNode = root.getChildrenByName("enemies")[0];
-                enemiesNode.removeChild(enemiesNode.getChildrenByName(_event.cmpRigidbody.getContainer().name)[0]);
-            }
-        }
-        if (_event.cmpRigidbody.getContainer().name !== "Avatar") {
+        let objectHit = _event.cmpRigidbody.getContainer();
+        if (objectHit.name === "boss" || objectHit.name === "enemie")
+            attackEnemie(objectHit);
+        if (objectHit.name !== "Avatar") {
             let projectile = _event.target.getContainer();
             projectile.getComponent(f.ComponentRigidbody).physicsType = f.PHYSICS_TYPE.STATIC;
-            f.Time.game.setTimer(1000, 1, () => root.removeChild(projectile));
+            f.Time.game.setTimer(1000, 1, () => {
+                Endabgabe.root.removeChild(projectile);
+                if (projectile.getComponent(f.ComponentRigidbody) != undefined)
+                    projectile.removeComponent(projectile.getComponent(f.ComponentRigidbody));
+                return;
+            });
+        }
+    }
+    function attackEnemie(_objectHit) {
+        _objectHit.getComponent(Endabgabe.ComponentScriptEnemie).enemyProps.life -= 5;
+        if (_objectHit.name == "boss")
+            Endabgabe.gameState.bosslife = Number(_objectHit.getComponent(Endabgabe.ComponentScriptEnemie).enemyProps.life);
+        if (_objectHit.getComponent(Endabgabe.ComponentScriptEnemie).enemyProps.life <= 0) {
+            let level = Endabgabe.root.getChildrenByName("level" + levelId)[0];
+            let enemiesNode = level.getChildrenByName("enemies")[0];
+            enemiesNode.removeChild(_objectHit);
+            _objectHit.removeComponent(_objectHit.getComponent(f.ComponentRigidbody));
+            Endabgabe.avatar.xp += _objectHit.getComponent(Endabgabe.ComponentScriptEnemie).enemyProps.xp;
+            if (enemiesNode.nChildren == 0)
+                console.log("win");
+        }
+    }
+    function gameover() {
+        Endabgabe.state = Game.OVER;
+        document.exitPointerLock();
+        let gameOverDiv = document.getElementById("gameover");
+        gameOverDiv.style.display = "flex";
+    }
+    Endabgabe.gameover = gameover;
+    async function restartLevel() {
+        let gameOverDiv = document.getElementById("gameover");
+        gameOverDiv.style.display = "none";
+        await init();
+    }
+    function clickLevelSelect() {
+        window.location.href = "./LevelSelect/LevelSelect.html";
+    }
+    function removedUnusedLevel() {
+        for (let currentLevel = 0; currentLevel < 6; currentLevel++) {
+            if (currentLevel != levelId) {
+                let level = Endabgabe.root.getChildrenByName("level" + currentLevel)[0];
+                Endabgabe.root.removeChild(level);
+            }
         }
     }
 })(Endabgabe || (Endabgabe = {}));

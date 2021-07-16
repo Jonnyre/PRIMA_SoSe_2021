@@ -4,6 +4,7 @@
     "life": 15,
     "damage": 5,
     "bossdamagemulitplier": 3,
-    "bosslifemulitplier": 3
+    "bosslifemulitplier": 3,
+    "xp": 5
   }
 ]
