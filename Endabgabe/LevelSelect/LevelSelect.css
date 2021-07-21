@@ -17,17 +17,18 @@ body {
 }
 
 #welcome {
-    display: flex;
-    justify-content: center;
-    border-style: dotted;
-    font-size: 40pt;
+  display: flex;
+  justify-content: center;
+  border-style: dotted;
+  font-size: 40pt;
 }
 
 #texttop {
   display: flex;
+  flex: 1;
   justify-content: center;
   font-size: xx-large;
-  margin: 10px;
+  margin-top: 10px;
 }
 
 #levels {
@@ -43,8 +44,44 @@ body {
   justify-content: center;
   align-items: center;
   background-color: grey;
-  flex: 1;
+  flex: 3;
   cursor: pointer;
   margin: 10px;
   border-style: double;
+}
+
+#sharedDiv {
+  display: flex;
+  flex-direction: row;
+}
+
+#howToPlay {
+  cursor: pointer;
+  width: 50px;
+  height: 50px;
+  background: url("Question_mark.png");
+  background-repeat: no-repeat;
+  background-size: cover;
+  margin: 10px;
+}
+
+#textHowToPlay {
+  margin: 0px;
+}
+
+#controls {
+  visibility: hidden;
+  display: flex;
+  flex:1;
+  justify-content: center;
+  align-items: center;
+  background: url("Controls.png");
+  background-repeat: no-repeat;
+}
+
+#bottomDiv {
+  margin: 10px;
+  display: flex;
+  flex: 1;
+  justify-content: center;
 }
