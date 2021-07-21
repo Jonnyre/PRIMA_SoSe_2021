@@ -4,6 +4,7 @@ namespace Endabgabe {
     class GameState extends ƒ.Mutable {
       public weapon: string = "Sword";
       public bosslife: number = 0;
+      public avatarLife: number = 100;
       protected reduceMutator(_mutator: ƒ.Mutator): void {/* */ }
     }
   
@@ -19,6 +20,10 @@ namespace Endabgabe {
 
         let domHud1: HTMLDivElement = <HTMLDivElement>document.getElementById("bosslifeDiv");
         Hud.controller = new fui.Controller(gameState, domHud1);
+        Hud.controller.updateUserInterface();
+
+        let domHud2: HTMLDivElement = <HTMLDivElement>document.getElementById("avatarLifeDiv");
+        Hud.controller = new fui.Controller(gameState, domHud2);
         Hud.controller.updateUserInterface();
       }
     }

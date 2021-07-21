@@ -37,14 +37,19 @@ var Endabgabe;
         hndCollision(_event) {
             let objectHit = _event.cmpRigidbody.getContainer();
             if (objectHit.name === "avatar") {
+                let audioHit = new f.Audio("./Assets/Sounds/Ahh(2).mp3");
+                let cmpAudioHit = new f.ComponentAudio(audioHit);
+                objectHit.addComponent(cmpAudioHit);
+                cmpAudioHit.play(true);
                 Endabgabe.avatar.life -= 5;
+                Endabgabe.gameState.avatarLife = Endabgabe.avatar.life;
             }
             if (Endabgabe.avatar.life <= 0) {
                 Endabgabe.gameover();
             }
             let fireBall = _event.target.getContainer();
             fireBall.getComponent(f.ComponentRigidbody).physicsType = f.PHYSICS_TYPE.STATIC;
-            f.Time.game.setTimer(1000, 1, () => {
+            f.Time.game.setTimer(200, 1, () => {
                 Endabgabe.root.removeChild(fireBall);
                 if (fireBall.getComponent(f.ComponentRigidbody) != undefined)
                     fireBall.removeComponent(fireBall.getComponent(f.ComponentRigidbody));
@@ -52,8 +57,8 @@ var Endabgabe;
             });
         }
     }
-    ComponentScriptEnemie.textureEnemie = new f.TextureImage("./Assets/Ghost.png");
-    ComponentScriptEnemie.mtrEnemie = new f.Material("Arrow", f.ShaderTexture, new f.CoatTextured(f.Color.CSS("White"), ComponentScriptEnemie.textureEnemie));
+    ComponentScriptEnemie.textureEnemie = new f.TextureImage("./Assets/Slime.png");
+    ComponentScriptEnemie.mtrEnemie = new f.Material("Enemie", f.ShaderTexture, new f.CoatTextured(f.Color.CSS("Red"), ComponentScriptEnemie.textureEnemie));
     Endabgabe.ComponentScriptEnemie = ComponentScriptEnemie;
 })(Endabgabe || (Endabgabe = {}));
 //# sourceMappingURL=ComponentScriptEnemie.js.map

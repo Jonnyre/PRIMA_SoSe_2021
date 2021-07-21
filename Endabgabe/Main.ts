@@ -9,7 +9,6 @@ namespace Endabgabe {
         damage: number;
         bosslifemulitplier: number;
         bossdamagemulitplier: number;
-        xp: number;
     }
 
     export enum Game {
@@ -26,6 +25,7 @@ namespace Endabgabe {
 
     let firstPerson: boolean = true;
     let canChangeView: boolean = true;
+    let canLavaDamage: boolean = true;
 
     let camSpeed: number = -0.2;
     let isLocked: boolean = false;
@@ -33,12 +33,15 @@ namespace Endabgabe {
     let canAttack: boolean = true;
     let enemies: IEnemie[];
     let levelId: number = 0;
-
+    let trigger: f.Node;
     enum WEAPON {
         BOW = 0,
         SWORD = 1
     }
     let equippedWeapon: WEAPON = WEAPON.SWORD;
+
+    let textureLava: f.TextureImage = new f.TextureImage("./Assets/lava.jpg");
+    let mtrLava: f.Material = new f.Material("Lava", f.ShaderTexture, new f.CoatTextured(f.Color.CSS("Red"), textureLava));
 
     async function init(): Promise<void> {
         let currentLocation: string = window.location.search;
@@ -65,11 +68,20 @@ namespace Endabgabe {
         createAvatar();
         createRigidbodies();
         createEnemies();
+        createTrigger();
 
         let restartButton: HTMLDivElement = <HTMLDivElement>document.getElementById("restartLevel");
         restartButton.addEventListener("click", restartLevel);
+
+        let playagain: HTMLDivElement = <HTMLDivElement>document.getElementById("playagain");
+        playagain.addEventListener("click", playAgain);
+
         let levelSelectButton: HTMLDivElement = <HTMLDivElement>document.getElementById("levelSelection");
         levelSelectButton.addEventListener("click", clickLevelSelect);
+
+        let levelSelectButton2: HTMLDivElement = <HTMLDivElement>document.getElementById("levelSelection2");
+        levelSelectButton2.addEventListener("click", clickLevelSelect);
+
         f.Physics.adjustTransforms(root, true);
 
         viewport.initialize("InteractiveViewport", root, cmpCamera, canvas);
@@ -82,6 +94,8 @@ namespace Endabgabe {
         document.addEventListener("keydown", hndKeyDown);
         document.addEventListener("keyup", hndKeyRelease);
 
+        trigger.getComponent(f.ComponentRigidbody).addEventListener(f.EVENT_PHYSICS.TRIGGER_ENTER, hndTrigger);
+
         f.Loop.addEventListener(f.EVENT.LOOP_FRAME, update);
         f.Loop.start();
     }
@@ -90,7 +104,7 @@ namespace Endabgabe {
         f.Physics.world.simulate(f.Loop.timeFrameReal / 1000);
 
         if (state == Game.OVER) return;
-
+        f.AudioManager.default.update();
 
         switchWeapon();
         avatar.move();
@@ -101,10 +115,16 @@ namespace Endabgabe {
     function createAvatar(): void {
         cmpCamera = new f.ComponentCamera();
         avatar = new Avatar("avatar", cmpCamera);
+        gameState.avatarLife = avatar.life;
         avatar.camNode.mtxLocal.rotateY(-90);
         avatar.mtxLocal.translateY(1);
         f.AudioManager.default.listenTo(root);
-        f.AudioManager.default.listenWith(avatar.getComponent(f.ComponentAudioListener));
+        f.AudioManager.default.listenWith(avatar.camNode.getComponent(f.ComponentAudioListener));
+        let audioBackground: f.Audio = new f.Audio("./Assets/Sounds/Background.mp3");
+        let cmpAudio: f.ComponentAudio = new f.ComponentAudio(audioBackground, true);
+        cmpAudio.volume = 0.5;
+        avatar.addComponent(cmpAudio);
+        cmpAudio.play(true);
         root.appendChild(avatar);
     }
 
@@ -114,8 +134,20 @@ namespace Endabgabe {
 
         let floor: f.Node = level.getChildrenByName("floor")[0];
         for (let row of floor.getChildren()) {
-            for (let piece of row.getChildren())
+            for (let piece of row.getChildren()) {
                 piece.addComponent(new f.ComponentRigidbody(0, f.PHYSICS_TYPE.STATIC, f.COLLIDER_TYPE.CUBE, f.PHYSICS_GROUP.DEFAULT));
+                if (piece.name === "lava") {
+                    let lavaAudio: f.Audio = new f.Audio("./Assets/Sounds/Lava_2.mp3");
+                    let cmpAudio: f.ComponentAudio = new f.ComponentAudio(lavaAudio, true);
+                    cmpAudio.volume = 0.05;
+                    cmpAudio.play(true);
+                    piece.addComponent(cmpAudio);
+                    piece.removeComponent(piece.getComponent(f.ComponentMaterial));
+                    piece.addComponent(new f.ComponentMaterial(mtrLava));
+                    piece.getComponent(f.ComponentRigidbody).addEventListener(f.EVENT_PHYSICS.COLLISION_ENTER, hndStepLava);
+                }
+
+            }
         }
 
         let walls: f.Node = level.getChildrenByName("walls")[0];
@@ -124,7 +156,6 @@ namespace Endabgabe {
     }
 
     function hndMouse(_event: MouseEvent): void {
-        console.log();
         avatar.camNode.mtxLocal.rotateY(_event.movementX * camSpeed, true);
         let xRotation: number = - _event.movementY * camSpeed;
         if (avatar.camNode.mtxLocal.rotation.x + xRotation > -45 && avatar.camNode.mtxLocal.rotation.x + xRotation < 45)
@@ -164,7 +195,11 @@ namespace Endabgabe {
             avatar.forwardMovement = -1;
 
         if (_event.code == f.KEYBOARD_CODE.SPACE) {
-            if (avatar.isGrounded) avatar.getComponent(f.ComponentRigidbody).applyLinearImpulse(new f.Vector3(0, jumpForce, 0));
+            if (avatar.isGrounded) {
+                avatar.getComponent(f.ComponentAudio).setAudio(new f.Audio(("./Assets/Sounds/Yeet.mp3")));
+                avatar.getComponent(f.ComponentAudio).play(true);
+                avatar.getComponent(f.ComponentRigidbody).applyLinearImpulse(new f.Vector3(0, jumpForce, 0));
+            }
         }
 
         if (_event.code == f.KEYBOARD_CODE.SHIFT_LEFT)
@@ -254,10 +289,18 @@ namespace Endabgabe {
                     direction.scale(4);
                     direction.y += 1;
                     arrow.getComponent(f.ComponentRigidbody).applyLinearImpulse(direction);
+                    let arrowAudio: f.Audio = new f.Audio("./Assets/Sounds/Bow.mp3");
+                    let cmpAudio: f.ComponentAudio = new f.ComponentAudio(arrowAudio);
+                    arrow.addComponent(cmpAudio);
+                    cmpAudio.play(true);
                     canAttack = false;
                     f.Time.game.setTimer(500, 1, () => canAttack = true);
                     break;
                 case WEAPON.SWORD:
+                    let swordAudio: f.Audio = new f.Audio("./Assets/Sounds/Sword_2.mp3");
+                    let cmpAudioAvatar: f.ComponentAudio = new f.ComponentAudio(swordAudio);
+                    avatar.addComponent(cmpAudioAvatar);
+                    cmpAudioAvatar.play(true);
                     let hitInfo: f.RayHitInfo = f.Physics.raycast(avatar.getComponent(f.ComponentRigidbody).getPosition(), avatar.camNode.mtxWorld.getZ(), 4.5);
                     if (hitInfo.hit) {
                         let objectHit: f.Node = hitInfo.rigidbodyComponent.getContainer();
@@ -269,7 +312,6 @@ namespace Endabgabe {
                     }
                     break;
                 default:
-                    console.log("Schlag");
                     break;
             }
         }
@@ -283,26 +325,30 @@ namespace Endabgabe {
             let enemieComponent: ComponentScriptEnemie = new ComponentScriptEnemie();
             enemie.addComponent(enemieComponent);
             if (enemie.name === "boss") {
+                let bossAudio: f.Audio = new f.Audio("./Assets/Sounds/Boss.mp3");
+                let cmpAudio: f.ComponentAudio = new f.ComponentAudio(bossAudio, true);
+                cmpAudio.volume = 0.5;
+                cmpAudio.play(true);
+                enemie.addComponent(cmpAudio);
+
                 enemieComponent.enemyProps = {
-                    id: enemies[0].id,
-                    damage: enemies[0].damage * enemies[0].bossdamagemulitplier,
-                    life: enemies[0].life * enemies[0].bosslifemulitplier,
-                    bossdamagemulitplier: enemies[0].bossdamagemulitplier,
-                    bosslifemulitplier: enemies[0].bosslifemulitplier,
-                    xp: enemies[0].xp
+                    id: enemies[levelId - 1].id,
+                    damage: enemies[levelId - 1].damage * enemies[levelId - 1].bossdamagemulitplier,
+                    life: enemies[levelId - 1].life * enemies[levelId - 1].bosslifemulitplier,
+                    bossdamagemulitplier: enemies[levelId - 1].bossdamagemulitplier,
+                    bosslifemulitplier: enemies[levelId - 1].bosslifemulitplier
                 };
-                gameState.bosslife = enemies[0].life * enemies[0].bosslifemulitplier;
+                gameState.bosslife = enemies[levelId - 1].life * enemies[levelId - 1].bosslifemulitplier;
                 let progress: HTMLProgressElement = <HTMLProgressElement>document.getElementById("bosslife");
-                progress.max = enemies[0].life * enemies[0].bosslifemulitplier;
+                progress.max = enemies[levelId - 1].life * enemies[levelId - 1].bosslifemulitplier;
             }
             else
                 enemieComponent.enemyProps = {
-                    id: enemies[0].id,
-                    damage: enemies[0].damage,
-                    life: enemies[0].life,
-                    bossdamagemulitplier: enemies[0].bossdamagemulitplier,
-                    bosslifemulitplier: enemies[0].bosslifemulitplier,
-                    xp: enemies[0].xp
+                    id: enemies[levelId - 1].id,
+                    damage: enemies[levelId - 1].damage,
+                    life: enemies[levelId - 1].life,
+                    bossdamagemulitplier: enemies[levelId - 1].bossdamagemulitplier,
+                    bosslifemulitplier: enemies[levelId - 1].bosslifemulitplier
                 };
             enemie.addComponent(new f.ComponentRigidbody(0, f.PHYSICS_TYPE.STATIC, f.COLLIDER_TYPE.CUBE, f.PHYSICS_GROUP.DEFAULT));
         }
@@ -326,23 +372,37 @@ namespace Endabgabe {
     }
 
     function attackEnemie(_objectHit: f.Node): void {
+        let enemyHitAudio: f.Audio = new f.Audio("./Assets/Sounds/Enemy_Damage.mp3");
+        let cmpAudioEnemy: f.ComponentAudio = new f.ComponentAudio(enemyHitAudio);
+        _objectHit.addComponent(cmpAudioEnemy);
+        cmpAudioEnemy.play(true);
         _objectHit.getComponent(ComponentScriptEnemie).enemyProps.life -= 5;
         if (_objectHit.name == "boss")
             gameState.bosslife = Number(_objectHit.getComponent(ComponentScriptEnemie).enemyProps.life);
 
         if (_objectHit.getComponent(ComponentScriptEnemie).enemyProps.life <= 0) {
+            let enemyDieAudio: f.Audio = new f.Audio("./Assets/Sounds/Enemy_Die.mp3");
+            let cmpAudioEnemyDie: f.ComponentAudio = new f.ComponentAudio(enemyDieAudio);
+            avatar.addComponent(cmpAudioEnemyDie);
+            cmpAudioEnemyDie.play(true);
             let level: f.Node = root.getChildrenByName("level" + levelId)[0];
             let enemiesNode: f.Node = level.getChildrenByName("enemies")[0];
             enemiesNode.removeChild(_objectHit);
             _objectHit.removeComponent(_objectHit.getComponent(f.ComponentRigidbody));
-            avatar.xp += _objectHit.getComponent(ComponentScriptEnemie).enemyProps.xp;
             if (enemiesNode.nChildren == 0)
-                console.log("win");
+                win();
         }
     }
 
     export function gameover(): void {
         state = Game.OVER;
+
+        let gameoverAudio: f.Audio = new f.Audio("./Assets/Sounds/");
+        avatar.getComponent(f.ComponentAudio).setAudio(gameoverAudio);
+        avatar.getComponent(f.ComponentAudio).play(true);
+
+        let crosshairDiv: HTMLDivElement = <HTMLDivElement>document.getElementById("crosshair");
+        crosshairDiv.style.display = "none";
 
         document.exitPointerLock();
         let gameOverDiv: HTMLDivElement = <HTMLDivElement>document.getElementById("gameover");
@@ -352,6 +412,18 @@ namespace Endabgabe {
     async function restartLevel(): Promise<void> {
         let gameOverDiv: HTMLDivElement = <HTMLDivElement>document.getElementById("gameover");
         gameOverDiv.style.display = "none";
+
+        let crosshairDiv: HTMLDivElement = <HTMLDivElement>document.getElementById("crosshair");
+        crosshairDiv.style.display = "block";
+        await init();
+    }
+
+    async function playAgain(): Promise<void> {
+        let winDiv: HTMLDivElement = <HTMLDivElement>document.getElementById("win");
+        winDiv.style.display = "none";
+
+        let crosshairDiv: HTMLDivElement = <HTMLDivElement>document.getElementById("crosshair");
+        crosshairDiv.style.display = "block";
         await init();
     }
 
@@ -365,6 +437,49 @@ namespace Endabgabe {
                 let level: f.Node = root.getChildrenByName("level" + currentLevel)[0];
                 root.removeChild(level);
             }
+        }
+    }
+
+    function createTrigger(): void {
+        trigger = new f.Node("trigger");
+
+        trigger.addComponent(new f.ComponentTransform());
+        trigger.mtxLocal.scale(new f.Vector3(140, 1, 30));
+        trigger.mtxLocal.translateY(-7.5);
+
+        let body: f.ComponentRigidbody = new f.ComponentRigidbody(0, f.PHYSICS_TYPE.STATIC, f.COLLIDER_TYPE.CUBE, f.PHYSICS_GROUP.TRIGGER);
+        trigger.addComponent(body);
+
+        root.addChild(trigger);
+    }
+
+    function hndTrigger(_event: f.EventPhysics): void {
+        let objectHit: f.Node = _event.cmpRigidbody.getContainer();
+        if (objectHit.name === "avatar") gameover();
+    }
+
+    function win(): void {
+        state = Game.OVER;
+
+        let crosshairDiv: HTMLDivElement = <HTMLDivElement>document.getElementById("crosshair");
+        crosshairDiv.style.display = "none";
+
+        document.exitPointerLock();
+        let gameOverDiv: HTMLDivElement = <HTMLDivElement>document.getElementById("win");
+        gameOverDiv.style.display = "flex";
+    }
+
+    function hndStepLava(_event: f.EventPhysics): void {
+        let objectHit: f.Node = _event.cmpRigidbody.getContainer();
+        if (objectHit.name === "avatar" && canLavaDamage) {
+            canLavaDamage = false;
+            let audioHit: f.Audio = new f.Audio("./Assets/Sounds/Ahh(2).mp3");
+            let cmpAudioHit: f.ComponentAudio = new f.ComponentAudio(audioHit);
+            objectHit.addComponent(cmpAudioHit);
+            cmpAudioHit.play(true);
+            avatar.life -= 5;
+            gameState.avatarLife = avatar.life;
+            f.Time.game.setTimer(500, 1, () => canLavaDamage = true);
         }
     }
 }

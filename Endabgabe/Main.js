@@ -15,18 +15,22 @@ var Endabgabe;
     let cmpCamera;
     let firstPerson = true;
     let canChangeView = true;
+    let canLavaDamage = true;
     let camSpeed = -0.2;
     let isLocked = false;
     const jumpForce = 400;
     let canAttack = true;
     let enemies;
     let levelId = 0;
+    let trigger;
     let WEAPON;
     (function (WEAPON) {
         WEAPON[WEAPON["BOW"] = 0] = "BOW";
         WEAPON[WEAPON["SWORD"] = 1] = "SWORD";
     })(WEAPON || (WEAPON = {}));
     let equippedWeapon = WEAPON.SWORD;
+    let textureLava = new f.TextureImage("./Assets/lava.jpg");
+    let mtrLava = new f.Material("Lava", f.ShaderTexture, new f.CoatTextured(f.Color.CSS("Red"), textureLava));
     async function init() {
         let currentLocation = window.location.search;
         levelId = Number(currentLocation.replace("?id=", ""));
@@ -49,10 +53,15 @@ var Endabgabe;
         createAvatar();
         createRigidbodies();
         createEnemies();
+        createTrigger();
         let restartButton = document.getElementById("restartLevel");
         restartButton.addEventListener("click", restartLevel);
+        let playagain = document.getElementById("playagain");
+        playagain.addEventListener("click", playAgain);
         let levelSelectButton = document.getElementById("levelSelection");
         levelSelectButton.addEventListener("click", clickLevelSelect);
+        let levelSelectButton2 = document.getElementById("levelSelection2");
+        levelSelectButton2.addEventListener("click", clickLevelSelect);
         f.Physics.adjustTransforms(Endabgabe.root, true);
         viewport.initialize("InteractiveViewport", Endabgabe.root, cmpCamera, canvas);
         document.addEventListener("mousemove", hndMouse);
@@ -61,6 +70,7 @@ var Endabgabe;
         Endabgabe.Hud.start();
         document.addEventListener("keydown", hndKeyDown);
         document.addEventListener("keyup", hndKeyRelease);
+        trigger.getComponent(f.ComponentRigidbody).addEventListener("TriggerEnteredCollision" /* TRIGGER_ENTER */, hndTrigger);
         f.Loop.addEventListener("loopFrame" /* LOOP_FRAME */, update);
         f.Loop.start();
     }
@@ -68,6 +78,7 @@ var Endabgabe;
         f.Physics.world.simulate(f.Loop.timeFrameReal / 1000);
         if (Endabgabe.state == Game.OVER)
             return;
+        f.AudioManager.default.update();
         switchWeapon();
         Endabgabe.avatar.move();
         changeCameraView();
@@ -76,10 +87,16 @@ var Endabgabe;
     function createAvatar() {
         cmpCamera = new f.ComponentCamera();
         Endabgabe.avatar = new Endabgabe.Avatar("avatar", cmpCamera);
+        Endabgabe.gameState.avatarLife = Endabgabe.avatar.life;
         Endabgabe.avatar.camNode.mtxLocal.rotateY(-90);
         Endabgabe.avatar.mtxLocal.translateY(1);
         f.AudioManager.default.listenTo(Endabgabe.root);
-        f.AudioManager.default.listenWith(Endabgabe.avatar.getComponent(f.ComponentAudioListener));
+        f.AudioManager.default.listenWith(Endabgabe.avatar.camNode.getComponent(f.ComponentAudioListener));
+        let audioBackground = new f.Audio("./Assets/Sounds/Background.mp3");
+        let cmpAudio = new f.ComponentAudio(audioBackground, true);
+        cmpAudio.volume = 0.5;
+        Endabgabe.avatar.addComponent(cmpAudio);
+        cmpAudio.play(true);
         Endabgabe.root.appendChild(Endabgabe.avatar);
     }
     function createRigidbodies() {
@@ -87,15 +104,25 @@ var Endabgabe;
         let level = levelParent.getChildrenByName("level")[0];
         let floor = level.getChildrenByName("floor")[0];
         for (let row of floor.getChildren()) {
-            for (let piece of row.getChildren())
+            for (let piece of row.getChildren()) {
                 piece.addComponent(new f.ComponentRigidbody(0, f.PHYSICS_TYPE.STATIC, f.COLLIDER_TYPE.CUBE, f.PHYSICS_GROUP.DEFAULT));
+                if (piece.name === "lava") {
+                    let lavaAudio = new f.Audio("./Assets/Sounds/Lava_2.mp3");
+                    let cmpAudio = new f.ComponentAudio(lavaAudio, true);
+                    cmpAudio.volume = 0.05;
+                    cmpAudio.play(true);
+                    piece.addComponent(cmpAudio);
+                    piece.removeComponent(piece.getComponent(f.ComponentMaterial));
+                    piece.addComponent(new f.ComponentMaterial(mtrLava));
+                    piece.getComponent(f.ComponentRigidbody).addEventListener("ColliderEnteredCollision" /* COLLISION_ENTER */, hndStepLava);
+                }
+            }
         }
         let walls = level.getChildrenByName("walls")[0];
         for (let wall of walls.getChildren())
             wall.addComponent(new f.ComponentRigidbody(0, f.PHYSICS_TYPE.STATIC, f.COLLIDER_TYPE.CUBE, f.PHYSICS_GROUP.DEFAULT));
     }
     function hndMouse(_event) {
-        console.log();
         Endabgabe.avatar.camNode.mtxLocal.rotateY(_event.movementX * camSpeed, true);
         let xRotation = -_event.movementY * camSpeed;
         if (Endabgabe.avatar.camNode.mtxLocal.rotation.x + xRotation > -45 && Endabgabe.avatar.camNode.mtxLocal.rotation.x + xRotation < 45)
@@ -128,8 +155,11 @@ var Endabgabe;
         if (_event.code == f.KEYBOARD_CODE.D)
             Endabgabe.avatar.forwardMovement = -1;
         if (_event.code == f.KEYBOARD_CODE.SPACE) {
-            if (Endabgabe.avatar.isGrounded)
+            if (Endabgabe.avatar.isGrounded) {
+                Endabgabe.avatar.getComponent(f.ComponentAudio).setAudio(new f.Audio(("./Assets/Sounds/Yeet.mp3")));
+                Endabgabe.avatar.getComponent(f.ComponentAudio).play(true);
                 Endabgabe.avatar.getComponent(f.ComponentRigidbody).applyLinearImpulse(new f.Vector3(0, jumpForce, 0));
+            }
         }
         if (_event.code == f.KEYBOARD_CODE.SHIFT_LEFT)
             Endabgabe.avatar.sprint();
@@ -202,10 +232,18 @@ var Endabgabe;
                     direction.scale(4);
                     direction.y += 1;
                     arrow.getComponent(f.ComponentRigidbody).applyLinearImpulse(direction);
+                    let arrowAudio = new f.Audio("./Assets/Sounds/Bow.mp3");
+                    let cmpAudio = new f.ComponentAudio(arrowAudio);
+                    arrow.addComponent(cmpAudio);
+                    cmpAudio.play(true);
                     canAttack = false;
                     f.Time.game.setTimer(500, 1, () => canAttack = true);
                     break;
                 case WEAPON.SWORD:
+                    let swordAudio = new f.Audio("./Assets/Sounds/Sword_2.mp3");
+                    let cmpAudioAvatar = new f.ComponentAudio(swordAudio);
+                    Endabgabe.avatar.addComponent(cmpAudioAvatar);
+                    cmpAudioAvatar.play(true);
                     let hitInfo = f.Physics.raycast(Endabgabe.avatar.getComponent(f.ComponentRigidbody).getPosition(), Endabgabe.avatar.camNode.mtxWorld.getZ(), 4.5);
                     if (hitInfo.hit) {
                         let objectHit = hitInfo.rigidbodyComponent.getContainer();
@@ -217,7 +255,6 @@ var Endabgabe;
                     }
                     break;
                 default:
-                    console.log("Schlag");
                     break;
             }
         }
@@ -229,26 +266,29 @@ var Endabgabe;
             let enemieComponent = new Endabgabe.ComponentScriptEnemie();
             enemie.addComponent(enemieComponent);
             if (enemie.name === "boss") {
+                let bossAudio = new f.Audio("./Assets/Sounds/Boss.mp3");
+                let cmpAudio = new f.ComponentAudio(bossAudio, true);
+                cmpAudio.volume = 0.5;
+                cmpAudio.play(true);
+                enemie.addComponent(cmpAudio);
                 enemieComponent.enemyProps = {
-                    id: enemies[0].id,
-                    damage: enemies[0].damage * enemies[0].bossdamagemulitplier,
-                    life: enemies[0].life * enemies[0].bosslifemulitplier,
-                    bossdamagemulitplier: enemies[0].bossdamagemulitplier,
-                    bosslifemulitplier: enemies[0].bosslifemulitplier,
-                    xp: enemies[0].xp
+                    id: enemies[levelId - 1].id,
+                    damage: enemies[levelId - 1].damage * enemies[levelId - 1].bossdamagemulitplier,
+                    life: enemies[levelId - 1].life * enemies[levelId - 1].bosslifemulitplier,
+                    bossdamagemulitplier: enemies[levelId - 1].bossdamagemulitplier,
+                    bosslifemulitplier: enemies[levelId - 1].bosslifemulitplier
                 };
-                Endabgabe.gameState.bosslife = enemies[0].life * enemies[0].bosslifemulitplier;
+                Endabgabe.gameState.bosslife = enemies[levelId - 1].life * enemies[levelId - 1].bosslifemulitplier;
                 let progress = document.getElementById("bosslife");
-                progress.max = enemies[0].life * enemies[0].bosslifemulitplier;
+                progress.max = enemies[levelId - 1].life * enemies[levelId - 1].bosslifemulitplier;
             }
             else
                 enemieComponent.enemyProps = {
-                    id: enemies[0].id,
-                    damage: enemies[0].damage,
-                    life: enemies[0].life,
-                    bossdamagemulitplier: enemies[0].bossdamagemulitplier,
-                    bosslifemulitplier: enemies[0].bosslifemulitplier,
-                    xp: enemies[0].xp
+                    id: enemies[levelId - 1].id,
+                    damage: enemies[levelId - 1].damage,
+                    life: enemies[levelId - 1].life,
+                    bossdamagemulitplier: enemies[levelId - 1].bossdamagemulitplier,
+                    bosslifemulitplier: enemies[levelId - 1].bosslifemulitplier
                 };
             enemie.addComponent(new f.ComponentRigidbody(0, f.PHYSICS_TYPE.STATIC, f.COLLIDER_TYPE.CUBE, f.PHYSICS_GROUP.DEFAULT));
         }
@@ -269,21 +309,33 @@ var Endabgabe;
         }
     }
     function attackEnemie(_objectHit) {
+        let enemyHitAudio = new f.Audio("./Assets/Sounds/Enemy_Damage.mp3");
+        let cmpAudioEnemy = new f.ComponentAudio(enemyHitAudio);
+        _objectHit.addComponent(cmpAudioEnemy);
+        cmpAudioEnemy.play(true);
         _objectHit.getComponent(Endabgabe.ComponentScriptEnemie).enemyProps.life -= 5;
         if (_objectHit.name == "boss")
             Endabgabe.gameState.bosslife = Number(_objectHit.getComponent(Endabgabe.ComponentScriptEnemie).enemyProps.life);
         if (_objectHit.getComponent(Endabgabe.ComponentScriptEnemie).enemyProps.life <= 0) {
+            let enemyDieAudio = new f.Audio("./Assets/Sounds/Enemy_Die.mp3");
+            let cmpAudioEnemyDie = new f.ComponentAudio(enemyDieAudio);
+            Endabgabe.avatar.addComponent(cmpAudioEnemyDie);
+            cmpAudioEnemyDie.play(true);
             let level = Endabgabe.root.getChildrenByName("level" + levelId)[0];
             let enemiesNode = level.getChildrenByName("enemies")[0];
             enemiesNode.removeChild(_objectHit);
             _objectHit.removeComponent(_objectHit.getComponent(f.ComponentRigidbody));
-            Endabgabe.avatar.xp += _objectHit.getComponent(Endabgabe.ComponentScriptEnemie).enemyProps.xp;
             if (enemiesNode.nChildren == 0)
-                console.log("win");
+                win();
         }
     }
     function gameover() {
         Endabgabe.state = Game.OVER;
+        let gameoverAudio = new f.Audio("./Assets/Sounds/");
+        Endabgabe.avatar.getComponent(f.ComponentAudio).setAudio(gameoverAudio);
+        Endabgabe.avatar.getComponent(f.ComponentAudio).play(true);
+        let crosshairDiv = document.getElementById("crosshair");
+        crosshairDiv.style.display = "none";
         document.exitPointerLock();
         let gameOverDiv = document.getElementById("gameover");
         gameOverDiv.style.display = "flex";
@@ -292,6 +344,15 @@ var Endabgabe;
     async function restartLevel() {
         let gameOverDiv = document.getElementById("gameover");
         gameOverDiv.style.display = "none";
+        let crosshairDiv = document.getElementById("crosshair");
+        crosshairDiv.style.display = "block";
+        await init();
+    }
+    async function playAgain() {
+        let winDiv = document.getElementById("win");
+        winDiv.style.display = "none";
+        let crosshairDiv = document.getElementById("crosshair");
+        crosshairDiv.style.display = "block";
         await init();
     }
     function clickLevelSelect() {
@@ -303,6 +364,41 @@ var Endabgabe;
                 let level = Endabgabe.root.getChildrenByName("level" + currentLevel)[0];
                 Endabgabe.root.removeChild(level);
             }
+        }
+    }
+    function createTrigger() {
+        trigger = new f.Node("trigger");
+        trigger.addComponent(new f.ComponentTransform());
+        trigger.mtxLocal.scale(new f.Vector3(140, 1, 30));
+        trigger.mtxLocal.translateY(-7.5);
+        let body = new f.ComponentRigidbody(0, f.PHYSICS_TYPE.STATIC, f.COLLIDER_TYPE.CUBE, f.PHYSICS_GROUP.TRIGGER);
+        trigger.addComponent(body);
+        Endabgabe.root.addChild(trigger);
+    }
+    function hndTrigger(_event) {
+        let objectHit = _event.cmpRigidbody.getContainer();
+        if (objectHit.name === "avatar")
+            gameover();
+    }
+    function win() {
+        Endabgabe.state = Game.OVER;
+        let crosshairDiv = document.getElementById("crosshair");
+        crosshairDiv.style.display = "none";
+        document.exitPointerLock();
+        let gameOverDiv = document.getElementById("win");
+        gameOverDiv.style.display = "flex";
+    }
+    function hndStepLava(_event) {
+        let objectHit = _event.cmpRigidbody.getContainer();
+        if (objectHit.name === "avatar" && canLavaDamage) {
+            canLavaDamage = false;
+            let audioHit = new f.Audio("./Assets/Sounds/Ahh(2).mp3");
+            let cmpAudioHit = new f.ComponentAudio(audioHit);
+            objectHit.addComponent(cmpAudioHit);
+            cmpAudioHit.play(true);
+            Endabgabe.avatar.life -= 5;
+            Endabgabe.gameState.avatarLife = Endabgabe.avatar.life;
+            f.Time.game.setTimer(500, 1, () => canLavaDamage = true);
         }
     }
 })(Endabgabe || (Endabgabe = {}));

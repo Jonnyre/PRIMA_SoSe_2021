@@ -3,8 +3,8 @@ namespace Endabgabe {
     f.Project.registerScriptNamespace(Endabgabe);
 
     export class ComponentScriptEnemie extends f.ComponentScript {
-        private static textureEnemie: f.TextureImage = new f.TextureImage("./Assets/Ghost.png");
-        private static mtrEnemie: f.Material = new f.Material("Arrow", f.ShaderTexture, new f.CoatTextured(f.Color.CSS("White"), ComponentScriptEnemie.textureEnemie));
+        private static textureEnemie: f.TextureImage = new f.TextureImage("./Assets/Slime.png");
+        private static mtrEnemie: f.Material = new f.Material("Enemie", f.ShaderTexture, new f.CoatTextured(f.Color.CSS("Red"), ComponentScriptEnemie.textureEnemie));
 
 
         public enemyProps: IEnemie;
@@ -51,7 +51,12 @@ namespace Endabgabe {
         private hndCollision(_event: f.EventPhysics): void {
             let objectHit: f.Node = _event.cmpRigidbody.getContainer();
             if (objectHit.name === "avatar") {
+                let audioHit: f.Audio = new f.Audio("./Assets/Sounds/Ahh(2).mp3");
+                let cmpAudioHit: f.ComponentAudio = new f.ComponentAudio(audioHit);
+                objectHit.addComponent(cmpAudioHit);
+                cmpAudioHit.play(true);
                 avatar.life -= 5;
+                gameState.avatarLife = avatar.life;
             }
             if (avatar.life <= 0) {
                 gameover();
@@ -59,7 +64,7 @@ namespace Endabgabe {
 
             let fireBall: Fireball = (<f.ComponentRigidbody>_event.target).getContainer();
             fireBall.getComponent(f.ComponentRigidbody).physicsType = f.PHYSICS_TYPE.STATIC;
-            f.Time.game.setTimer(1000, 1, () => {
+            f.Time.game.setTimer(200, 1, () => {
                 root.removeChild(fireBall);
                 if (fireBall.getComponent(f.ComponentRigidbody) != undefined)
                     fireBall.removeComponent(fireBall.getComponent(f.ComponentRigidbody));

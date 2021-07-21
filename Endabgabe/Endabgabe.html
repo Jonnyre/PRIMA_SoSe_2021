@@ -29,20 +29,32 @@
 
     
     <div id="Hud">
-        <label>Weapon:</label>
-        <input type=text key="weapon" min="0" max="10" disabled/>
-        
+        <p id="weaponName">Weapon:</p>
+        <input id="weapon" type=text key="weapon" min="0" max="10" disabled/>
     </div>
 
     <div id="bosslifeDiv">
         <p id="bossname">Boss:</p>
         <progress id="bosslife" key="bosslife" max="100"></progress>    
     </div>
+
+    <div id="avatarLifeDiv">
+        <p id="avatarLifeName">Life:</p>
+        <progress id="avatarLife" key="avatarLife" max="100"></progress>    
+    </div>
+
     <div id="gameover">
         <p id="gameovertext">Gameover</p>
         <div id="restartLevel">Restart level</div>
+        <div id="levelSelection2">Choose another level</div>
+    </div>
+
+    <div id="win">
+        <p id="wintext">Congratulations!!!</p>
+        <div id="playagain">Play again</div>
         <div id="levelSelection">Choose another level</div>
     </div>
+
     <div id="crosshair">
         <div id="crosshair_left" class="sword_left"></div>
         <div id="crosshair_right" class="sword_right"></div>

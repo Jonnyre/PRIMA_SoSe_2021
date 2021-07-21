@@ -7,6 +7,7 @@ var Endabgabe;
             super(...arguments);
             this.weapon = "Sword";
             this.bosslife = 0;
+            this.avatarLife = 100;
         }
         reduceMutator(_mutator) { }
     }
@@ -18,6 +19,9 @@ var Endabgabe;
             Hud.controller.updateUserInterface();
             let domHud1 = document.getElementById("bosslifeDiv");
             Hud.controller = new fui.Controller(Endabgabe.gameState, domHud1);
+            Hud.controller.updateUserInterface();
+            let domHud2 = document.getElementById("avatarLifeDiv");
+            Hud.controller = new fui.Controller(Endabgabe.gameState, domHud2);
             Hud.controller.updateUserInterface();
         }
     }

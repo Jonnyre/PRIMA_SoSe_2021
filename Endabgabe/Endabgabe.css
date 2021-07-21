@@ -17,18 +17,19 @@ canvas.fullscreen {
 }
 
 #Hud {
-  background-color: aquamarine;
-  width: 200px;
-  height: 50px;
   position: absolute;
   left: 1vw;
   bottom: 5vh;
 }
 
 #weapon {
-  position: absolute;
-  bottom: 100px;
-  left: 20px;
+  text-align: center;
+  height: 3vh;
+}
+#weaponName {
+  text-align: center;
+  font-size: 20pt;
+  margin: 0px;
 }
 #bossname {
   text-align: center;
@@ -47,7 +48,23 @@ canvas.fullscreen {
   top: 1vh;
 }
 
-#gameover {
+#avatarLifeDiv {
+  position: absolute;
+  right: 1vw;
+  bottom: 5vh;
+}
+
+#avatarLife {
+  width: 40vw;
+  height: 5vh;
+}
+
+#avatarLifeName {
+  font-size: 20pt;
+  text-align: center;
+  margin: 0px;
+}
+#gameover, #win {
   display: none;
   background-color: #C0C0C0;
   flex-direction: column;
@@ -61,14 +78,14 @@ canvas.fullscreen {
   left: 25vw;
 }
 
-#gameovertext {
+#gameovertext, #wintext {
   height: 20px;
   display: flex;
   font-size: 40pt;
   text-align: center;
 }
 
-#restartLevel {
+#restartLevel, #playagain {
   display: flex;
   cursor: pointer;
   background-color: grey;
@@ -79,7 +96,7 @@ canvas.fullscreen {
   width: 20vw;
 }
 
-#levelSelection {
+#levelSelection, #levelSelection2 {
   display: flex;
   cursor: pointer;
   background-color: grey;

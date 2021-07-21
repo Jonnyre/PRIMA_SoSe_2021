@@ -3,8 +3,8 @@ namespace Endabgabe {
 
     export class Projectile extends f.Node {
 
-        private static textureArrow: f.TextureImage = new f.TextureImage("./Assets/Arrow.png");
-        private static mtrArrow: f.Material = new f.Material("Arrow", f.ShaderTexture, new f.CoatTextured(f.Color.CSS("White"), Projectile.textureArrow));
+        // private static textureArrow: f.TextureImage = new f.TextureImage("./Assets/Arrow_2.png");
+        private static mtrArrow: f.Material = new f.Material("Arrow", f.ShaderTexture, new f.CoatTextured(f.Color.CSS("Black")));
 
         private static textureFireball: f.TextureImage = new f.TextureImage("./Assets/Fireball.jpg");
         private static mtrFireball: f.Material = new f.Material("Arrow", f.ShaderTexture, new f.CoatTextured(f.Color.CSS("White"), Projectile.textureFireball));

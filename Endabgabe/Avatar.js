@@ -9,9 +9,8 @@ var Endabgabe;
             this.movementSpeed = 5;
             this.forwardMovement = 0;
             this.sideMovement = 0;
-            this.xp = 0;
             this.defaultMovementSpeed = 5;
-            this.life = 50;
+            this.life = 100;
             let cmpTransform = new f.ComponentTransform(f.Matrix4x4.IDENTITY());
             this.addComponent(cmpTransform);
             this.addChild(this.camNode);
@@ -26,8 +25,8 @@ var Endabgabe;
             avatarBody.restitution = 0;
             avatarBody.rotationInfluenceFactor = f.Vector3.ZERO();
             let cmpAudio = new f.ComponentAudio();
-            // this.addComponent(_cmpCamera);
             this.addComponent(cmpAudio);
+            this.camNode.addComponent(new f.ComponentAudioListener());
             this.addComponent(avatarBody);
         }
         move() {

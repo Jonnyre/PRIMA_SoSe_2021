@@ -10,12 +10,11 @@ namespace Endabgabe {
         public isGrounded: boolean;
         public isInRange: boolean;
         public life: number;
-        public xp: number = 0;
 
         private defaultMovementSpeed: number = 5;
         constructor(_name: string, _cmpCamera: f.ComponentCamera) {
             super(_name);
-            this.life = 50;
+            this.life = 100;
             let cmpTransform: f.ComponentTransform = new f.ComponentTransform(f.Matrix4x4.IDENTITY());
             this.addComponent(cmpTransform);
 
@@ -33,9 +32,9 @@ namespace Endabgabe {
             avatarBody.rotationInfluenceFactor = f.Vector3.ZERO();
 
             let cmpAudio: f.ComponentAudio = new f.ComponentAudio();
-
-            // this.addComponent(_cmpCamera);
             this.addComponent(cmpAudio);
+            this.camNode.addComponent(new f.ComponentAudioListener());
+
             this.addComponent(avatarBody);
         }
 
